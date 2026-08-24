@@ -37,7 +37,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
           <span>01</span>
           <h2 id="meta-title">글 정보</h2>
         </div>
-        <button type="button" class="collapse-button" id="meta-toggle" aria-expanded="true">접기</button>
+        <button type="button" class="collapse-button" id="meta-toggle" aria-expanded="true" aria-controls="meta-fields">접기</button>
       </div>
       <div class="field-grid" id="meta-fields">
         <label class="wide"><span>제목</span><input id="title" name="title" placeholder="글의 제목" /></label>
@@ -515,7 +515,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   .editor-topbar h1 { margin: 3px 0 0; font-family: 'Fraunces', Georgia, serif; font-size: 38px; font-weight: 500; }
   .editor-actions { display: flex; align-items: center; gap: 10px; }
   .save-state { margin-right: 8px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
-  .button { padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .button { min-height: 44px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
   .button:disabled { cursor: wait; opacity: .65; }
   .button.ghost { background: var(--surface); color: var(--ink-soft); }
   .button.primary { border-color: var(--accent); background: var(--accent); color: white; }
@@ -530,8 +530,9 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   .panel-heading > div:first-child { display: flex; align-items: baseline; gap: 10px; }
   .panel-heading span { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
   .panel-heading h2 { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: 17px; font-weight: 500; }
-  .collapse-button { border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 12px; }
+  .collapse-button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 12px; }
   .field-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; }
+  .field-grid[hidden] { display: none; }
   .field-grid label { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
   .field-grid label.wide { grid-column: span 2; }
   .field-grid label > span { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
@@ -541,10 +542,10 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   .field-grid small.changed { color: var(--warm); line-height: 1.45; }
   .writing-heading { min-height: 56px; }
   .view-tabs { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
-  .view-tabs button { padding: 5px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 11.5px; }
+  .view-tabs button { min-width: 44px; min-height: 44px; padding: 5px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 11.5px; }
   .view-tabs button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
   .toolbar { display: flex; gap: 3px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
-  .toolbar button { display: grid; width: 34px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .toolbar button { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
   .toolbar button:hover { background: var(--accent-soft); color: var(--accent); }
   .editor-split { display: grid; grid-template-columns: 1fr 1fr; min-height: 560px; }
   .write-pane, .preview-pane { display: flex; min-width: 0; flex-direction: column; }
@@ -565,17 +566,17 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   .editor-split[data-view='write'] { grid-template-columns: 1fr; } .editor-split[data-view='write'] .preview-pane { display: none; }
   .editor-split[data-view='preview'] { grid-template-columns: 1fr; } .editor-split[data-view='preview'] .write-pane { display: none; }
   .editor-statusbar { display: flex; justify-content: space-between; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; }
-  dialog { max-width: 420px; padding: 0; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 80px rgba(0,0,0,.25); }
+  dialog { width: min(calc(100% - 32px), 420px); max-width: calc(100% - 32px); padding: 0; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 80px rgba(0,0,0,.25); }
   dialog::backdrop { background: rgba(13,17,23,.56); backdrop-filter: blur(3px); }
   dialog form { padding: 26px; }
   dialog h2 { margin: 0 0 10px; font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 500; }
   dialog p { margin: 0 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
   .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
-  .load-dialog { width: min(100% - 32px, 560px); }
+  .load-dialog { width: min(calc(100% - 32px), 560px); max-width: 560px; }
   .load-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
   .load-dialog-head span { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .1em; }
   .load-dialog-head h2 { margin: 3px 0 0; }
-  .load-dialog-head button { border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 24px; }
+  .load-dialog-head button { display: grid; width: 44px; height: 44px; padding: 0; flex: none; place-items: center; border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 24px; }
   .remote-post-list { max-height: min(58vh, 520px); padding: 8px 0; overflow-y: auto; }
   .remote-post-list > button { display: grid; width: 100%; grid-template-columns: 80px 1fr auto; align-items: center; gap: 12px; padding: 13px 24px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
   .remote-post-list > button:hover { background: var(--accent-soft); }
@@ -584,5 +585,5 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   .remote-status.public { color: var(--accent); } .remote-status.draft { color: var(--ink-faint); }
   .loading-posts { padding: 34px 24px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-align: center; }
   @media (max-width: 900px) { .field-grid { grid-template-columns: 1fr 1fr; } .editor-topbar { align-items: flex-start; flex-direction: column; } .editor-actions { width: 100%; flex-wrap: wrap; } .save-state { width: 100%; } }
-  @media (max-width: 700px) { .editor-page { width: min(100% - 24px, 1240px); padding-top: 24px; } .field-grid { grid-template-columns: 1fr; } .field-grid label.wide { grid-column: auto; } .editor-split { grid-template-columns: 1fr; } .editor-split[data-view='split'] .preview-pane { display: none; } .write-pane { border-right: 0; } .connection-note { align-items: flex-start; flex-wrap: wrap; } .connection-note a { width: 100%; margin: 4px 0 0 16px; } .toolbar { overflow-x: auto; } }
+  @media (max-width: 700px) { .editor-page { width: min(100% - 24px, 1240px); padding-top: 24px; } .field-grid { grid-template-columns: 1fr; } .field-grid label.wide { grid-column: auto; } .editor-split { grid-template-columns: 1fr; } .editor-split[data-view='split'] .preview-pane { display: none; } .write-pane { border-right: 0; } .connection-note { align-items: flex-start; flex-wrap: wrap; } .connection-note a { display: inline-flex; width: 100%; min-height: 44px; align-items: center; margin: 4px 0 0 16px; } .toolbar { overflow-x: auto; } }
 </style>
