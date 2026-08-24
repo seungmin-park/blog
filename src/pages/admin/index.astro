@@ -257,12 +257,16 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       return `${yaml.join('\n')}${draft.body.trim()}\n`;
     };
 
-    const showMessage = (title: string, message: string) => {
+    const showMessage = (title: string, message: string, buttonLabel = '확인') => {
       const titleEl = document.querySelector('#dialog-title');
       const messageEl = document.querySelector('#dialog-message');
+      const buttonEl = dialog?.querySelector<HTMLButtonElement>('button[value="close"]');
       if (titleEl) titleEl.textContent = title;
       if (messageEl) messageEl.textContent = message;
-      dialog?.showModal();
+      if (buttonEl) buttonEl.textContent = buttonLabel;
+      if (!dialog) return Promise.resolve();
+      dialog.showModal();
+      return new Promise<void>((resolve) => dialog.addEventListener('close', () => resolve(), { once: true }));
     };
 
     const readApiError = async (response: Response, fallback: string) => {
@@ -421,12 +425,19 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         publishedSlug = result.publishedSlug || null;
         updateRecordControls();
         saveLocal();
-        showMessage(
-          status === 'public' ? '발행을 요청했습니다' : '임시 저장했습니다',
-          status === 'public'
-            ? '공개 저장소에 반영했으며 GitHub Pages 빌드가 곧 시작됩니다.'
-            : '비공개 원고 저장소에 보관했습니다. 기존 공개 글이 있더라도 공개본은 그대로 유지됩니다.',
-        );
+        if (status === 'public') {
+          await showMessage(
+            '발행을 요청했습니다',
+            '공개 저장소에 반영했습니다. 메인 페이지로 이동한 뒤에도 GitHub Pages 배포가 끝날 때까지 이전 내용이 잠시 보일 수 있습니다.',
+            '메인으로 이동',
+          );
+          window.location.assign(new URL('../', window.location.href).href);
+        } else {
+          showMessage(
+            '임시 저장했습니다',
+            '비공개 원고 저장소에 보관했습니다. 기존 공개 글이 있더라도 공개본은 그대로 유지됩니다.',
+          );
+        }
       } catch (error) { showMessage('저장하지 못했습니다', error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.'); }
       finally { if (button) { button.disabled = false; button.textContent = originalLabel; } }
     };
