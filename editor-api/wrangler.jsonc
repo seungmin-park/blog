@@ -4,12 +4,12 @@
   "main": "src/index.js",
   "compatibility_date": "2026-08-20",
   "vars": {
-    "ALLOWED_GITHUB_LOGIN": "your-github-login",
-    "PUBLIC_REPO_OWNER": "your-github-login",
-    "PUBLIC_REPO_NAME": "your-pages-repository",
-    "PRIVATE_REPO_OWNER": "your-github-login",
-    "PRIVATE_REPO_NAME": "your-private-content-repository",
-    "EDITOR_ORIGIN": "https://your-github-login.github.io",
-    "EDITOR_RETURN_URL": "https://your-github-login.github.io/your-pages-repository/admin/"
+    "ALLOWED_GITHUB_LOGIN": "seungmin-park",
+    "PUBLIC_REPO_OWNER": "seungmin-park",
+    "PUBLIC_REPO_NAME": "blog",
+    "PRIVATE_REPO_OWNER": "seungmin-park",
+    "PRIVATE_REPO_NAME": "blog-draft",
+    "EDITOR_ORIGIN": "https://seungmin-park.github.io",
+    "EDITOR_RETURN_URL": "https://seungmin-park.github.io/blog/admin/"
   }
 }
