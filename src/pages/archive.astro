@@ -163,12 +163,12 @@ const years = [...grouped.keys()].sort((a, b) => b - a);
   .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
   .filter-pill { padding: 7px 14px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; transition: 0.15s ease; }
   .filter-pill:hover { border-color: var(--accent); color: var(--accent); }
-  .filter-pill.active { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+  .filter-pill.active { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
   .more-tags { position: relative; }
   .more-tags summary { padding: 7px 14px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; list-style: none; }
   .more-tags summary::-webkit-details-marker { display: none; }
   .more-tags summary:hover, .more-tags[open] summary { border-color: var(--accent); color: var(--accent); }
-  .more-tags.has-active summary { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+  .more-tags.has-active summary { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
   .more-count { color: var(--accent); }
   .more-tags.has-active .more-count { color: inherit; opacity: 0.72; }
   .more-tags-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; display: flex; width: min(440px, calc(100vw - 36px)); max-height: 240px; flex-wrap: wrap; gap: 8px; padding: 14px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }

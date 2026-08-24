@@ -518,8 +518,8 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   .button { min-height: 44px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
   .button:disabled { cursor: wait; opacity: .65; }
   .button.ghost { background: var(--surface); color: var(--ink-soft); }
-  .button.primary { border-color: var(--accent); background: var(--accent); color: white; }
-  .button.danger { border-color: color-mix(in srgb, #c13c3c 55%, var(--line)); background: color-mix(in srgb, #c13c3c 8%, var(--surface)); color: #b02f2f; }
+  .button.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
+  .button.danger { border-color: color-mix(in srgb, var(--removed) 55%, var(--line)); background: var(--removed-soft); color: var(--removed); }
   .connection-note { display: flex; align-items: center; gap: 9px; padding: 11px 14px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink-soft); font-size: 12.5px; }
   .connection-note .status-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--warm); }
   .connection-note.connected .status-dot { background: var(--accent); }
