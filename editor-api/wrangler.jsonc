@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "seungmin-park-editor-api",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-20",
+  "vars": {
+    "ALLOWED_GITHUB_LOGIN": "your-github-login",
+    "PUBLIC_REPO_OWNER": "your-github-login",
+    "PUBLIC_REPO_NAME": "your-pages-repository",
+    "PRIVATE_REPO_OWNER": "your-github-login",
+    "PRIVATE_REPO_NAME": "your-private-content-repository",
+    "EDITOR_ORIGIN": "https://your-github-login.github.io",
+    "EDITOR_RETURN_URL": "https://your-github-login.github.io/your-pages-repository/admin/"
+  }
+}

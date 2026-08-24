@@ -1,0 +1,179 @@
+---
+import { getCollection, render } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { byNewest, formatDate, postPath, withBase, type Post } from '../../lib/posts';
+
+export async function getStaticPaths() {
+  const posts = (await getCollection('posts', ({ data }) => data.status === 'public')).sort(byNewest);
+  const postPaths = posts.map((post, index) => ({
+    params: { slug: post.data.slug },
+    props: {
+      post,
+      older: posts[index + 1],
+      newer: posts[index - 1],
+    },
+  }));
+  const activeSlugs = new Set(posts.map((post) => post.data.slug));
+  const redirectSlugs = new Set<string>();
+  const redirects = posts.flatMap((post) => post.data.aliases
+    .filter((alias) => !activeSlugs.has(alias) && !redirectSlugs.has(alias))
+    .map((alias) => {
+      redirectSlugs.add(alias);
+      return {
+        params: { slug: alias },
+        props: { redirectTo: post.data.slug },
+      };
+    }));
+  return [...postPaths, ...redirects];
+}
+
+interface PostProps {
+  post: Post;
+  older?: Post;
+  newer?: Post;
+}
+
+interface RedirectProps {
+  redirectTo: string;
+}
+
+type Props = PostProps | RedirectProps;
+
+const props = Astro.props as Props;
+if ('redirectTo' in props) return Astro.redirect(withBase(`/posts/${props.redirectTo}/`), 301);
+
+const { post, older, newer } = props;
+const { Content, headings } = await render(post);
+const toc = headings.filter((heading) => heading.depth === 2);
+const description = post.data.lead ?? post.data.summary;
+---
+
+<BaseLayout
+  title={`${post.data.title} — 박승민`}
+  description={description}
+  progress
+  image={post.data.thumbnail ? withBase(post.data.thumbnail) : undefined}
+>
+  <div class="wrap article-wrap">
+    <div class="breadcrumb">
+      <a href={withBase('/archive/')}>← 모든 글</a>
+      <span>/</span>
+      <span>{post.data.category}</span>
+    </div>
+
+    <div class="article-shell">
+      <article>
+        <div class="article-meta">
+          <span class="hash">#{post.data.commit}</span>
+          <time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time>
+        </div>
+        <h1>{post.data.title}</h1>
+        <p class="article-lead">{description}</p>
+        <div class="tags article-tags">
+          {post.data.tags.map((tag, index) => <span class:list={['tag', { warm: index === post.data.tags.length - 1 }]}>{tag}</span>)}
+        </div>
+
+        <div class="article-body">
+          <Content />
+        </div>
+
+        <nav class="prev-next" aria-label="이전 글과 다음 글">
+          {older ? (
+            <a class="previous" href={withBase(postPath(older))}>
+              <span>← #{older.data.commit} 이전 글</span>
+              <strong>{older.data.title}</strong>
+            </a>
+          ) : <div></div>}
+          {newer ? (
+            <a class="next" href={withBase(postPath(newer))}>
+              <span>다음 글 #{newer.data.commit} →</span>
+              <strong>{newer.data.title}</strong>
+            </a>
+          ) : <div></div>}
+        </nav>
+      </article>
+
+      {toc.length > 0 && (
+        <aside class="toc">
+          <div>이 글의 구조</div>
+          <ol>
+            {toc.map((heading) => <li><a href={`#${heading.slug}`} data-target={heading.slug}>{heading.text}</a></li>)}
+          </ol>
+        </aside>
+      )}
+    </div>
+  </div>
+
+  <script>
+    const progress = document.querySelector<HTMLElement>('#progress-fill');
+    const updateProgress = () => {
+      const root = document.documentElement;
+      const max = root.scrollHeight - root.clientHeight;
+      if (progress) progress.style.width = `${max > 0 ? Math.min(100, (root.scrollTop / max) * 100) : 0}%`;
+    };
+    document.addEventListener('scroll', updateProgress, { passive: true });
+    updateProgress();
+
+    const headings = [...document.querySelectorAll<HTMLElement>('.article-body h2')];
+    const links = [...document.querySelectorAll<HTMLAnchorElement>('.toc a')];
+    if (headings.length > 0) {
+      const observer = new IntersectionObserver((entries) => {
+        const visible = entries.find((entry) => entry.isIntersecting);
+        if (!visible) return;
+        links.forEach((link) => link.classList.toggle('active', link.dataset.target === visible.target.id));
+      }, { rootMargin: '-100px 0px -68% 0px' });
+      headings.forEach((heading) => observer.observe(heading));
+    }
+  </script>
+</BaseLayout>
+
+<style>
+  .article-wrap { padding-bottom: 64px; }
+  .breadcrumb { display: flex; align-items: center; gap: 8px; padding-top: 20px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+  .breadcrumb a:hover { color: var(--accent); }
+  .article-shell { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 56px; align-items: start; padding-top: 28px; }
+  article { min-width: 0; max-width: 680px; }
+  .article-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+  .article-meta .hash { color: var(--accent); }
+  article > h1 { margin: 0 0 20px; font-family: 'Fraunces', Georgia, serif; font-size: clamp(36px, 5vw, 44px); font-weight: 500; letter-spacing: -0.015em; line-height: 1.16; }
+  .article-lead { margin: 0 0 12px; color: var(--ink-soft); font-family: 'Fraunces', Georgia, serif; font-size: 19px; font-style: italic; line-height: 1.65; }
+  .article-tags { margin: 22px 0 40px; }
+  .article-body { color: var(--ink); font-size: 17px; line-height: 1.85; }
+  .article-body :global(p) { margin: 0 0 24px; }
+  .article-body :global(h2) { margin: 52px 0 18px; scroll-margin-top: 100px; font-family: 'Fraunces', Georgia, serif; font-size: 25px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.35; }
+  .article-body :global(h3) { margin: 36px 0 14px; scroll-margin-top: 100px; font-size: 19px; }
+  .article-body :global(a) { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  .article-body :global(blockquote) { margin: 36px 0; padding: 4px 0 4px 24px; border-left: 2px solid var(--accent); color: var(--ink); font-family: 'Fraunces', Georgia, serif; font-size: 20px; font-style: italic; line-height: 1.6; }
+  .article-body :global(blockquote p) { margin: 0; }
+  .article-body :global(ul), .article-body :global(ol) { margin: 0 0 24px; padding-left: 26px; }
+  .article-body :global(li) { margin-bottom: 7px; }
+  .article-body :global(code:not(pre code)) { padding: 2px 6px; border-radius: 4px; background: var(--accent-soft); color: var(--accent-strong); font-family: 'IBM Plex Mono', monospace; font-size: 0.84em; }
+  .article-body :global(pre) { margin: 32px 0; padding: 20px; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: #0d1117 !important; box-shadow: var(--shadow); font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.75; }
+  .article-body :global(table) { display: block; width: 100%; margin: 32px 0; overflow-x: auto; border-collapse: collapse; font-size: 14px; }
+  .article-body :global(th), .article-body :global(td) { padding: 10px 13px; border: 1px solid var(--line); text-align: left; }
+  .article-body :global(th) { background: var(--surface); }
+  .article-body :global(hr) { height: 1px; margin: 52px 0; border: 0; background: var(--line); }
+  .article-body :global(figure) { margin: 40px 0; }
+  .article-body :global(.abstraction-figure) { display: grid; min-height: 230px; place-items: center; padding: 32px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+  .article-body :global(.diagram-layer) { display: grid; width: min(100%, 460px); height: 166px; place-items: center; border: 1.5px solid var(--line); border-radius: 14px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .article-body :global(.diagram-layer > span) { align-self: start; margin-top: 7px; }
+  .article-body :global(.diagram-layer .middle) { width: 82%; height: 112px; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .article-body :global(.diagram-layer .inner) { width: 72%; height: 58px; border-color: var(--accent); background: var(--accent); color: var(--surface); }
+  .article-body :global(figcaption) { margin-top: 12px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-align: center; }
+  .article-body :global(.commit-line) { margin: 56px 0; }
+  .prev-next { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; margin-top: 56px; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+  .prev-next > * { min-height: 90px; padding: 22px 24px; background: var(--surface); }
+  .prev-next .next { text-align: right; }
+  .prev-next span { display: block; margin-bottom: 8px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .prev-next strong { font-family: 'Fraunces', Georgia, serif; font-size: 16px; font-weight: 500; }
+  .prev-next a:hover strong { color: var(--accent); }
+  .toc { position: sticky; top: 104px; }
+  .toc > div { margin-bottom: 14px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; }
+  .toc ol { padding: 0; margin: 0; list-style: none; }
+  .toc li { margin-bottom: 12px; }
+  .toc a { display: block; padding-left: 14px; border-left: 2px solid var(--line); color: var(--ink-faint); font-size: 13px; line-height: 1.4; transition: 0.2s ease; }
+  .toc a:hover { color: var(--ink); }
+  .toc a.active { border-color: var(--accent); color: var(--accent); font-weight: 500; }
+  @media (max-width: 900px) { .article-shell { grid-template-columns: minmax(0, 680px); justify-content: center; } .toc { display: none; } }
+  @media (max-width: 640px) { .article-shell { padding-top: 24px; } article > h1 { font-size: 34px; } .article-lead { font-size: 17px; } .article-body { font-size: 16px; } .prev-next { grid-template-columns: 1fr; } .prev-next .next { text-align: left; } }
+</style>

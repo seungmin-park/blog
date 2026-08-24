@@ -1,0 +1,200 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { byNewest, formatDate, postPath, withBase } from '../lib/posts';
+
+const posts = (await getCollection('posts', ({ data }) => data.status === 'public')).sort(byNewest);
+const tagCounts = posts.reduce((counts, post) => {
+  post.data.tags.forEach((tag) => counts.set(tag, (counts.get(tag) ?? 0) + 1));
+  return counts;
+}, new Map<string, number>());
+const tags = [...tagCounts.keys()].sort((a, b) => (tagCounts.get(b) ?? 0) - (tagCounts.get(a) ?? 0) || a.localeCompare(b, 'ko'));
+const primaryTags = tags.slice(0, 5);
+const moreTags = tags.slice(5);
+const grouped = posts.reduce((map, post) => {
+  const year = post.data.date.getFullYear();
+  const bucket = map.get(year) ?? [];
+  bucket.push(post);
+  map.set(year, bucket);
+  return map;
+}, new Map<number, typeof posts>());
+const years = [...grouped.keys()].sort((a, b) => b - a);
+---
+
+<BaseLayout title="아카이브 — 박승민" description="박승민이 지금까지 쓴 모든 글을 시간과 태그로 찾아봅니다." active="archive">
+  <div class="wrap archive-wrap">
+    <section class="page-hero">
+      <div class="eyebrow">전체 로그 · 총 {posts.length}편</div>
+      <h1>아카이브</h1>
+      <p>지금까지 쓴 모든 글을 시간 순으로 모았습니다. 제목을 검색하거나 태그로 걸러볼 수 있어요.</p>
+    </section>
+
+    <div class="archive-tools" role="search">
+      <label class="search-box">
+        <span class="sr-only">글 제목 검색</span>
+        <span aria-hidden="true">⌕</span>
+        <input id="archive-search" type="search" placeholder="글 제목 검색" autocomplete="off" />
+        <kbd>/</kbd>
+      </label>
+      <div class="filters" id="filters" aria-label="태그 필터">
+        <button class="filter-pill active" type="button" data-tag="all" aria-pressed="true">전체</button>
+        {primaryTags.map((tag) => <button class="filter-pill" type="button" data-tag={tag} aria-pressed="false">{tag}</button>)}
+        {moreTags.length > 0 && (
+          <details class="more-tags" id="more-tags">
+            <summary><span class="more-label">더보기</span> <span class="more-count">+{moreTags.length}</span></summary>
+            <div class="more-tags-menu">
+              {moreTags.map((tag) => <button class="filter-pill" type="button" data-tag={tag} aria-pressed="false">{tag}</button>)}
+            </div>
+          </details>
+        )}
+      </div>
+    </div>
+
+    <div id="log-root">
+      {years.map((year) => (
+        <section class="year-group" data-year={year}>
+          <div class="year-divider"><span class="node"></span><span class="year-num">{year}</span></div>
+          <div class="log-list">
+            {grouped.get(year)?.map((post) => (
+              <a
+                class="log-entry"
+                href={withBase(postPath(post))}
+                data-tags={post.data.tags.join('|')}
+                data-title={post.data.title.toLocaleLowerCase('ko')}
+              >
+                <span class="hash">#{post.data.commit}</span>
+                <span class="title-cell">
+                  <h2>{post.data.title}</h2>
+                  <span class:list={['tag-dot', { warm: post.data.category === '에세이' }]}>{post.data.category}</span>
+                </span>
+                <span class="meta-cell">{formatDate(post.data.date, true)}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+
+    <div class="empty-state" id="empty-state" hidden>
+      <span aria-hidden="true">∅</span>
+      <p>조건에 맞는 글이 아직 없습니다.</p>
+      <button type="button" id="reset-filter">필터 초기화</button>
+    </div>
+  </div>
+
+  <script>
+    const pills = [...document.querySelectorAll<HTMLButtonElement>('.filter-pill')];
+    const entries = [...document.querySelectorAll<HTMLElement>('.log-entry')];
+    const groups = [...document.querySelectorAll<HTMLElement>('.year-group')];
+    const search = document.querySelector<HTMLInputElement>('#archive-search');
+    const empty = document.querySelector<HTMLElement>('#empty-state');
+    const reset = document.querySelector<HTMLButtonElement>('#reset-filter');
+    const moreDetails = document.querySelector<HTMLDetailsElement>('#more-tags');
+    const moreLabel = document.querySelector<HTMLElement>('.more-label');
+    let currentTag = 'all';
+
+    const applyFilters = () => {
+      const query = search?.value.trim().toLocaleLowerCase('ko') ?? '';
+      let visible = 0;
+      entries.forEach((entry) => {
+        const tags = entry.dataset.tags?.split('|') ?? [];
+        const tagMatches = currentTag === 'all' || tags.includes(currentTag);
+        const titleMatches = !query || entry.dataset.title?.includes(query);
+        entry.hidden = !(tagMatches && titleMatches);
+        if (!entry.hidden) visible += 1;
+      });
+      groups.forEach((group) => {
+        group.hidden = ![...group.querySelectorAll<HTMLElement>('.log-entry')].some((entry) => !entry.hidden);
+      });
+      if (empty) empty.hidden = visible !== 0;
+    };
+
+    pills.forEach((pill) => {
+      pill.addEventListener('click', () => {
+        currentTag = pill.dataset.tag ?? 'all';
+        pills.forEach((item) => {
+          const selected = item === pill;
+          item.classList.toggle('active', selected);
+          item.setAttribute('aria-pressed', String(selected));
+        });
+        applyFilters();
+        const hiddenTagSelected = Boolean(moreDetails?.contains(pill));
+        moreDetails?.classList.toggle('has-active', hiddenTagSelected);
+        if (moreLabel) moreLabel.textContent = hiddenTagSelected ? currentTag : '더보기';
+        if (hiddenTagSelected && moreDetails) moreDetails.open = false;
+      });
+    });
+
+    search?.addEventListener('input', applyFilters);
+    reset?.addEventListener('click', () => {
+      currentTag = 'all';
+      if (search) search.value = '';
+      pills.forEach((pill) => {
+        const selected = pill.dataset.tag === 'all';
+        pill.classList.toggle('active', selected);
+        pill.setAttribute('aria-pressed', String(selected));
+      });
+      moreDetails?.classList.remove('has-active');
+      if (moreDetails) moreDetails.open = false;
+      if (moreLabel) moreLabel.textContent = '더보기';
+      applyFilters();
+      search?.focus();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+        event.preventDefault();
+        search?.focus();
+      }
+    });
+  </script>
+</BaseLayout>
+
+<style>
+  .archive-wrap { padding-bottom: 64px; }
+  .page-hero { padding: 64px 0 8px; }
+  .page-hero h1 { margin: 0 0 10px; font-family: 'Fraunces', Georgia, serif; font-size: 44px; font-weight: 500; letter-spacing: -0.015em; }
+  .page-hero p { max-width: 560px; margin: 0; color: var(--ink-soft); font-size: 15.5px; line-height: 1.65; }
+  .archive-tools { margin: 36px 0 8px; }
+  .search-box { display: flex; max-width: 420px; height: 44px; align-items: center; gap: 10px; padding: 0 13px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--ink-faint); }
+  .search-box:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .search-box input { min-width: 0; flex: 1; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 14px; }
+  .search-box input::placeholder { color: var(--ink-faint); }
+  .search-box kbd { padding: 2px 6px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+  .filter-pill { padding: 7px 14px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; transition: 0.15s ease; }
+  .filter-pill:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-pill.active { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+  .more-tags { position: relative; }
+  .more-tags summary { padding: 7px 14px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; list-style: none; }
+  .more-tags summary::-webkit-details-marker { display: none; }
+  .more-tags summary:hover, .more-tags[open] summary { border-color: var(--accent); color: var(--accent); }
+  .more-tags.has-active summary { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+  .more-count { color: var(--accent); }
+  .more-tags.has-active .more-count { color: inherit; opacity: 0.72; }
+  .more-tags-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 10; display: flex; width: min(440px, calc(100vw - 36px)); max-height: 240px; flex-wrap: wrap; gap: 8px; padding: 14px; overflow-y: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+  .year-divider { margin: 52px 0 8px; }
+  .year-num { color: var(--ink); font-family: 'Fraunces', Georgia, serif; font-size: 20px; font-weight: 500; }
+  .log-list { border-top: 1px solid var(--line); }
+  .log-entry { display: grid; grid-template-columns: 110px 1fr auto; gap: 20px; align-items: baseline; padding: 18px 4px; border-bottom: 1px solid var(--line); transition: background 0.15s ease; }
+  .log-entry:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+  .log-entry .hash { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+  .title-cell { display: flex; min-width: 0; align-items: baseline; gap: 12px; }
+  .title-cell h2 { overflow: hidden; margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: 17px; font-weight: 500; letter-spacing: -0.005em; text-overflow: ellipsis; white-space: nowrap; }
+  .meta-cell { color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-align: right; white-space: nowrap; }
+  .empty-state { padding: 70px 0; color: var(--ink-faint); text-align: center; }
+  .empty-state > span { font-family: 'IBM Plex Mono', monospace; font-size: 32px; }
+  .empty-state p { margin: 12px 0 16px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
+  .empty-state button { padding: 7px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink-soft); cursor: pointer; font-size: 13px; }
+  .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+  [hidden] { display: none !important; }
+  @media (max-width: 640px) {
+    .page-hero { padding-top: 48px; }
+    .page-hero h1 { font-size: 34px; }
+    .log-entry { grid-template-columns: 1fr; gap: 6px; padding: 16px 4px; }
+    .log-entry .hash { order: 1; }
+    .meta-cell { text-align: left; }
+    .title-cell { align-items: flex-start; flex-direction: column; gap: 5px; }
+    .title-cell h2 { overflow: visible; white-space: normal; }
+    .more-tags-menu { right: auto; left: 0; }
+  }
+</style>

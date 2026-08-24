@@ -1,0 +1,588 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
+---
+
+<BaseLayout
+  title="글쓰기 — 박승민"
+  description="박승민 블로그의 관리자용 마크다운 에디터"
+  noindex
+>
+  <div class="editor-page" data-api-url={editorApi}>
+    <header class="editor-topbar">
+      <div>
+        <span class="editor-kicker">WRITING DESK</span>
+        <h1>새 기록</h1>
+      </div>
+      <div class="editor-actions">
+        <span class="save-state" id="save-state" role="status">로컬에 저장됨</span>
+        <button class="button ghost" type="button" id="load-button">GitHub에서 불러오기</button>
+        <button class="button ghost" type="button" id="download-button">Markdown 받기</button>
+        <button class="button danger" type="button" id="delete-button" hidden>삭제</button>
+        <button class="button ghost" type="button" id="draft-button">임시 저장</button>
+        <button class="button primary" type="button" id="publish-button">발행</button>
+      </div>
+    </header>
+
+    <div class="connection-note" id="connection-note">
+      <span class="status-dot"></span>
+      <span>{editorApi ? 'GitHub 연결 상태를 확인하는 중입니다.' : '로컬 편집 모드 · OAuth API 주소를 설정하면 GitHub 저장이 활성화됩니다.'}</span>
+      {editorApi && <a id="login-link" href={`${editorApi}/auth/login`}>GitHub 로그인 →</a>}
+    </div>
+
+    <section class="frontmatter-panel" aria-labelledby="meta-title">
+      <div class="panel-heading">
+        <div>
+          <span>01</span>
+          <h2 id="meta-title">글 정보</h2>
+        </div>
+        <button type="button" class="collapse-button" id="meta-toggle" aria-expanded="true">접기</button>
+      </div>
+      <div class="field-grid" id="meta-fields">
+        <label class="wide"><span>제목</span><input id="title" name="title" placeholder="글의 제목" /></label>
+        <label><span>슬러그</span><input id="slug" name="slug" placeholder="post-slug" /><small id="slug-note">글 URL에 사용합니다.</small></label>
+        <label><span>날짜</span><input id="date" name="date" type="date" /></label>
+        <label><span>카테고리</span><input id="category" name="category" placeholder="개발" /></label>
+        <label class="wide"><span>태그</span><input id="tags" name="tags" placeholder="github, astro, 기록" /><small>쉼표로 구분합니다.</small></label>
+        <label class="wide"><span>한 줄 요약</span><input id="summary" name="summary" placeholder="목록과 검색에 표시할 설명" /></label>
+        <label class="wide"><span>썸네일</span><input id="thumbnail" name="thumbnail" placeholder="/assets/images/thumb.png" /></label>
+      </div>
+    </section>
+
+    <section class="writing-panel" aria-labelledby="body-title">
+      <div class="panel-heading writing-heading">
+        <div><span>02</span><h2 id="body-title">본문</h2></div>
+        <div class="view-tabs" role="tablist" aria-label="편집 화면 배치">
+          <button class="active" type="button" data-view="split" aria-selected="true">분할</button>
+          <button type="button" data-view="write" aria-selected="false">작성</button>
+          <button type="button" data-view="preview" aria-selected="false">미리보기</button>
+        </div>
+      </div>
+      <div class="toolbar" role="toolbar" aria-label="마크다운 서식">
+        <button type="button" data-format="heading" title="제목">H</button>
+        <button type="button" data-format="bold" title="굵게 (Ctrl+B)"><strong>B</strong></button>
+        <button type="button" data-format="italic" title="기울임"><em>I</em></button>
+        <button type="button" data-format="quote" title="인용">❯</button>
+        <button type="button" data-format="code" title="코드 블록">&lt;/&gt;</button>
+        <button type="button" data-format="list" title="목록">≡</button>
+        <button type="button" data-format="link" title="링크 (Ctrl+K)">↗</button>
+        <button type="button" id="image-button" title="이미지">▧</button>
+        <input id="image-input" type="file" accept="image/*" hidden />
+      </div>
+      <div class="editor-split" id="editor-split" data-view="split">
+        <div class="write-pane">
+          <label for="body">Markdown</label>
+          <textarea id="body" spellcheck="true" placeholder="이야기를 시작하세요…"></textarea>
+        </div>
+        <div class="preview-pane">
+          <span>Preview</span>
+          <article id="markdown-preview" class="markdown-preview"><p class="placeholder">왼쪽에 쓴 내용이 여기에 보입니다.</p></article>
+        </div>
+      </div>
+      <div class="editor-statusbar">
+        <span id="word-count">0자</span>
+        <span>30초마다 자동 저장</span>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="message-dialog">
+    <form method="dialog">
+      <h2 id="dialog-title">알림</h2>
+      <p id="dialog-message"></p>
+      <button class="button primary" value="close">확인</button>
+    </form>
+  </dialog>
+
+  <dialog id="load-dialog" class="load-dialog">
+    <div class="load-dialog-head">
+      <div><span>REMOTE POSTS</span><h2>저장된 글 불러오기</h2></div>
+      <button type="button" id="load-close" aria-label="닫기">×</button>
+    </div>
+    <div id="remote-post-list" class="remote-post-list"></div>
+  </dialog>
+
+  <dialog id="delete-dialog">
+    <form method="dialog">
+      <h2>이 글을 삭제할까요?</h2>
+      <p id="delete-message"></p>
+      <div class="dialog-actions">
+        <button class="button ghost" value="cancel">취소</button>
+        <button class="button danger" type="button" id="delete-confirm">삭제</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    type Draft = {
+      title: string; slug: string; date: string;
+      category: string; tags: string; summary: string; thumbnail: string; body: string;
+    };
+    type SaveStatus = 'draft' | 'public';
+    type SourceRef = { status: SaveStatus; slug: string; sha: string };
+    type LoadedPost = Draft & { publishedSlug?: string };
+    type StoredEditor = { draft: Partial<Draft>; source: SourceRef | null; publishedSlug: string | null };
+    const storageKey = 'seungmin-park-editor-draft-v1';
+    const page = document.querySelector<HTMLElement>('.editor-page');
+    const apiUrl = page?.dataset.apiUrl ?? '';
+    const ids = ['title', 'slug', 'date', 'category', 'tags', 'summary', 'thumbnail', 'body'] as const;
+    const fields = Object.fromEntries(ids.map((id) => [id, document.querySelector<HTMLInputElement | HTMLTextAreaElement>(`#${id}`)])) as Record<typeof ids[number], HTMLInputElement | HTMLTextAreaElement>;
+    const preview = document.querySelector<HTMLElement>('#markdown-preview');
+    const saveState = document.querySelector<HTMLElement>('#save-state');
+    const wordCount = document.querySelector<HTMLElement>('#word-count');
+    const connectionNote = document.querySelector<HTMLElement>('#connection-note');
+    const dialog = document.querySelector<HTMLDialogElement>('#message-dialog');
+    const loadDialog = document.querySelector<HTMLDialogElement>('#load-dialog');
+    const deleteDialog = document.querySelector<HTMLDialogElement>('#delete-dialog');
+    const deleteButton = document.querySelector<HTMLButtonElement>('#delete-button');
+    const slugNote = document.querySelector<HTMLElement>('#slug-note');
+    let csrfToken = '';
+    let sourceRef: SourceRef | null = null;
+    let publishedSlug: string | null = null;
+
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char] ?? char);
+    const safeUrl = (value: string, image = false) => {
+      const decoded = value.replaceAll('&amp;', '&').trim();
+      const allowed = /^(https?:\/\/|\/|#)/i.test(decoded);
+      if (!allowed) return image ? '' : '#';
+      return value;
+    };
+    const inline = (value: string) => value
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => `<img src="${safeUrl(url, true)}" alt="${alt}">`)
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => `<a href="${safeUrl(url)}" target="_blank" rel="noreferrer">${label}</a>`);
+
+    const renderMarkdown = (source: string) => {
+      if (!source.trim()) return '<p class="placeholder">왼쪽에 쓴 내용이 여기에 보입니다.</p>';
+      const escaped = escapeHtml(source);
+      const codeBlocks: string[] = [];
+      const withoutCode = escaped.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_, language, code) => {
+        const token = `@@CODE${codeBlocks.length}@@`;
+        codeBlocks.push(`<pre><code data-language="${language}">${code.trimEnd()}</code></pre>`);
+        return token;
+      });
+      const lines = withoutCode.split('\n');
+      const html: string[] = [];
+      let list: 'ul' | 'ol' | null = null;
+      const closeList = () => { if (list) html.push(`</${list}>`); list = null; };
+      for (const line of lines) {
+        if (/^@@CODE\d+@@$/.test(line)) { closeList(); html.push(line); continue; }
+        const heading = line.match(/^(#{1,3})\s+(.+)/);
+        if (heading) { closeList(); const level = heading[1].length; html.push(`<h${level}>${inline(heading[2])}</h${level}>`); continue; }
+        const quote = line.match(/^&gt;\s?(.+)/);
+        if (quote) { closeList(); html.push(`<blockquote>${inline(quote[1])}</blockquote>`); continue; }
+        const unordered = line.match(/^[-*]\s+(.+)/);
+        if (unordered) { if (list !== 'ul') { closeList(); list = 'ul'; html.push('<ul>'); } html.push(`<li>${inline(unordered[1])}</li>`); continue; }
+        const ordered = line.match(/^\d+\.\s+(.+)/);
+        if (ordered) { if (list !== 'ol') { closeList(); list = 'ol'; html.push('<ol>'); } html.push(`<li>${inline(ordered[1])}</li>`); continue; }
+        closeList();
+        if (line.trim()) html.push(`<p>${inline(line)}</p>`);
+      }
+      closeList();
+      return html.join('\n').replace(/@@CODE(\d+)@@/g, (_, index) => codeBlocks[Number(index)] ?? '');
+    };
+
+    const getDraft = (): Draft => ({
+      title: fields.title.value.trim(), slug: fields.slug.value.trim(), date: fields.date.value,
+      category: fields.category.value.trim(),
+      tags: fields.tags.value.trim(), summary: fields.summary.value.trim(),
+      thumbnail: fields.thumbnail.value.trim(), body: fields.body.value,
+    });
+
+    const updatePreview = () => {
+      if (preview) preview.innerHTML = renderMarkdown(fields.body.value);
+      const count = fields.body.value.replace(/\s/g, '').length;
+      if (wordCount) wordCount.textContent = `${count.toLocaleString('ko-KR')}자`;
+      if (saveState) saveState.textContent = '저장 대기 중…';
+    };
+
+    const updateRecordControls = () => {
+      if (deleteButton) deleteButton.hidden = !sourceRef;
+      if (!slugNote) return;
+      const nextSlug = fields.slug.value.trim();
+      if (!sourceRef || !nextSlug || nextSlug === sourceRef.slug) {
+        slugNote.textContent = '글 URL에 사용합니다.';
+        slugNote.classList.remove('changed');
+        return;
+      }
+      slugNote.classList.add('changed');
+      slugNote.textContent = publishedSlug
+        ? `발행하면 /posts/${publishedSlug}/ 주소를 새 주소로 연결합니다.`
+        : '저장에 성공한 뒤 기존 초안 파일을 정리합니다.';
+    };
+
+    const saveLocal = () => {
+      const stored: StoredEditor = { draft: getDraft(), source: sourceRef, publishedSlug };
+      localStorage.setItem(storageKey, JSON.stringify(stored));
+      if (saveState) saveState.textContent = `로컬에 저장됨 · ${new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}`;
+    };
+
+    const slugify = (value: string) => value.toLocaleLowerCase('ko')
+      .trim().replace(/[^a-z0-9가-힣]+/g, '-').replace(/^-|-$/g, '');
+
+    const restore = () => {
+      const saved = localStorage.getItem(storageKey);
+      const parsed = saved ? JSON.parse(saved) : null;
+      const stored: StoredEditor = parsed?.draft
+        ? parsed
+        : { draft: parsed ?? {}, source: null, publishedSlug: null };
+      const initial: Partial<Draft> = { date: new Date().toISOString().slice(0, 10), ...stored.draft };
+      sourceRef = stored.source ?? null;
+      publishedSlug = stored.publishedSlug ?? (sourceRef?.status === 'public' ? sourceRef.slug : null);
+      ids.forEach((id) => { if (initial[id] !== undefined) fields[id].value = String(initial[id]); });
+      updatePreview();
+      updateRecordControls();
+      if (saved && saveState) saveState.textContent = '이 기기의 자동 저장본을 불러왔습니다.';
+    };
+
+    const stableCommit = (value: string) => {
+      let hash = 0;
+      for (const character of value) hash = Math.imul(31, hash) + character.charCodeAt(0) | 0;
+      return Math.abs(hash).toString(16).slice(0, 6).padStart(6, '0');
+    };
+
+    const toMarkdown = (draft: Draft, status: SaveStatus) => {
+      const tags = draft.tags.split(',').map((tag) => tag.trim()).filter(Boolean);
+      const yaml = [
+        '---', `title: ${JSON.stringify(draft.title)}`, `slug: ${JSON.stringify(draft.slug)}`,
+        `date: ${draft.date}`, `updated: ${new Date().toISOString().slice(0, 10)}`, `status: ${status}`,
+        `tags: ${JSON.stringify(tags)}`, `category: ${JSON.stringify(draft.category)}`,
+        ...(draft.thumbnail ? [`thumbnail: ${JSON.stringify(draft.thumbnail)}`] : []),
+        `summary: ${JSON.stringify(draft.summary)}`, 'author: "박승민"',
+        `commit: "${stableCommit(`${draft.slug}-${draft.date}`)}"`, 'featured: false', '---', '',
+      ];
+      return `${yaml.join('\n')}${draft.body.trim()}\n`;
+    };
+
+    const showMessage = (title: string, message: string) => {
+      const titleEl = document.querySelector('#dialog-title');
+      const messageEl = document.querySelector('#dialog-message');
+      if (titleEl) titleEl.textContent = title;
+      if (messageEl) messageEl.textContent = message;
+      dialog?.showModal();
+    };
+
+    const readApiError = async (response: Response, fallback: string) => {
+      const result = await response.json().catch(() => null);
+      return typeof result?.error === 'string' ? result.error : fallback;
+    };
+
+    const wrapSelection = (before: string, after = before, placeholder = '텍스트') => {
+      const area = fields.body as HTMLTextAreaElement;
+      const start = area.selectionStart;
+      const end = area.selectionEnd;
+      const selected = area.value.slice(start, end) || placeholder;
+      area.setRangeText(`${before}${selected}${after}`, start, end, 'select');
+      area.focus();
+      updatePreview();
+    };
+
+    const formatters: Record<string, () => void> = {
+      heading: () => wrapSelection('## ', '', '제목'), bold: () => wrapSelection('**', '**'),
+      italic: () => wrapSelection('*', '*'), quote: () => wrapSelection('> ', '', '인용문'),
+      code: () => wrapSelection('```ts\n', '\n```', 'code'), list: () => wrapSelection('- ', '', '목록'),
+      link: () => wrapSelection('[', '](https://)', '링크 텍스트'),
+    };
+
+    ids.forEach((id) => fields[id].addEventListener('input', () => {
+      if (id === 'title' && !fields.slug.dataset.edited) fields.slug.value = slugify(fields.title.value);
+      updatePreview();
+    }));
+    fields.slug.addEventListener('input', () => { fields.slug.dataset.edited = 'true'; updateRecordControls(); });
+    document.querySelectorAll<HTMLButtonElement>('[data-format]').forEach((button) => button.addEventListener('click', () => formatters[button.dataset.format ?? '']?.()));
+    fields.body.addEventListener('keydown', (event) => {
+      const keyboardEvent = event as KeyboardEvent;
+      if (!(keyboardEvent.ctrlKey || keyboardEvent.metaKey)) return;
+      if (keyboardEvent.key.toLowerCase() === 'b') { keyboardEvent.preventDefault(); formatters.bold(); }
+      if (keyboardEvent.key.toLowerCase() === 'k') { keyboardEvent.preventDefault(); formatters.link(); }
+      if (keyboardEvent.key.toLowerCase() === 's') { keyboardEvent.preventDefault(); saveLocal(); }
+    });
+
+    const imageInput = document.querySelector<HTMLInputElement>('#image-input');
+    document.querySelector('#image-button')?.addEventListener('click', () => imageInput?.click());
+    const handleImage = async (file: File) => {
+      if (!file) return;
+      const safeName = file.name.toLocaleLowerCase().replace(/[^a-z0-9._-]+/g, '-');
+      if (!apiUrl) {
+        wrapSelection(`![${file.name}](/assets/images/${safeName})`, '', '');
+        showMessage('이미지 경로를 넣었습니다', '로컬 모드에서는 이미지 파일을 public/assets/images에 직접 추가해야 합니다.');
+        return;
+      }
+      try {
+        const form = new FormData();
+        form.append('file', file, safeName);
+        const response = await fetch(`${apiUrl}/api/images`, { method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': csrfToken }, body: form });
+        if (!response.ok) throw new Error('이미지를 업로드하지 못했습니다.');
+        const result = await response.json();
+        wrapSelection(`![${file.name}](${result.path})`, '', '');
+      } catch (error) { showMessage('이미지 업로드 실패', error instanceof Error ? error.message : '다시 시도해 주세요.'); }
+    };
+    imageInput?.addEventListener('change', () => {
+      const file = imageInput.files?.[0];
+      if (file) handleImage(file);
+    });
+
+    const writePane = document.querySelector<HTMLElement>('.write-pane');
+    writePane?.addEventListener('dragover', (event) => { event.preventDefault(); writePane.classList.add('dragging'); });
+    writePane?.addEventListener('dragleave', () => writePane.classList.remove('dragging'));
+    writePane?.addEventListener('drop', (event) => {
+      event.preventDefault();
+      writePane.classList.remove('dragging');
+      const file = event.dataTransfer?.files[0];
+      if (file?.type.startsWith('image/')) handleImage(file);
+    });
+
+    document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((button) => button.addEventListener('click', () => {
+      const split = document.querySelector<HTMLElement>('#editor-split');
+      if (split) split.dataset.view = button.dataset.view ?? 'split';
+      document.querySelectorAll<HTMLButtonElement>('[data-view]').forEach((item) => {
+        const selected = item === button;
+        item.classList.toggle('active', selected);
+        item.setAttribute('aria-selected', String(selected));
+      });
+    }));
+
+    document.querySelector('#meta-toggle')?.addEventListener('click', (event) => {
+      const button = event.currentTarget as HTMLButtonElement;
+      const meta = document.querySelector<HTMLElement>('#meta-fields');
+      const expanded = button.getAttribute('aria-expanded') === 'true';
+      button.setAttribute('aria-expanded', String(!expanded));
+      button.textContent = expanded ? '펼치기' : '접기';
+      if (meta) meta.hidden = expanded;
+    });
+
+    document.querySelector('#download-button')?.addEventListener('click', () => {
+      const draft = getDraft();
+      if (!draft.title || !draft.slug) { showMessage('글 정보를 확인해 주세요', '제목과 슬러그는 꼭 필요합니다.'); return; }
+      const blob = new Blob([toMarkdown(draft, 'draft')], { type: 'text/markdown;charset=utf-8' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${draft.date}-${draft.slug}.md`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+    });
+
+    document.querySelector('#load-button')?.addEventListener('click', async () => {
+      if (!apiUrl) { showMessage('OAuth API 연결이 필요합니다', 'PUBLIC_EDITOR_API_URL을 설정한 뒤 GitHub에 로그인해 주세요.'); return; }
+      const list = document.querySelector<HTMLElement>('#remote-post-list');
+      if (list) list.innerHTML = '<p class="loading-posts">목록을 불러오는 중…</p>';
+      loadDialog?.showModal();
+      try {
+        const response = await fetch(`${apiUrl}/api/posts`, { credentials: 'include' });
+        if (!response.ok) throw new Error(response.status === 401 ? 'GitHub 로그인이 필요합니다.' : '글 목록을 불러오지 못했습니다.');
+        const result = await response.json();
+        if (!list) return;
+        if (!result.posts.length) { list.innerHTML = '<p class="loading-posts">저장된 글이 없습니다.</p>'; return; }
+        list.innerHTML = '';
+        const labels: Record<string, string> = { draft: '임시저장', public: '발행됨' };
+        result.posts.forEach((post: { status: string; slug: string }) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.innerHTML = `<span class="remote-status ${post.status}">${labels[post.status] ?? post.status}</span><strong>${escapeHtml(post.slug)}</strong><span aria-hidden="true">→</span>`;
+          button.addEventListener('click', async () => {
+            try {
+              const detail = await fetch(`${apiUrl}/api/posts/${encodeURIComponent(post.status)}/${encodeURIComponent(post.slug)}`, { credentials: 'include' });
+              if (!detail.ok) throw new Error('글을 불러오지 못했습니다.');
+              const result = await detail.json();
+              const loaded = result.post as LoadedPost;
+              ids.forEach((id) => { fields[id].value = String(loaded[id] ?? ''); });
+              sourceRef = result.source as SourceRef;
+              publishedSlug = loaded.publishedSlug || (sourceRef.status === 'public' ? sourceRef.slug : null);
+              fields.slug.dataset.edited = 'true';
+              updatePreview();
+              updateRecordControls();
+              saveLocal();
+              loadDialog?.close();
+            } catch (error) { loadDialog?.close(); showMessage('불러오기 실패', error instanceof Error ? error.message : '다시 시도해 주세요.'); }
+          });
+          list.append(button);
+        });
+      } catch (error) {
+        if (list) list.innerHTML = `<p class="loading-posts">${escapeHtml(error instanceof Error ? error.message : '다시 시도해 주세요.')}</p>`;
+      }
+    });
+    document.querySelector('#load-close')?.addEventListener('click', () => loadDialog?.close());
+
+    const saveToGitHub = async (status: SaveStatus) => {
+      const draft = getDraft();
+      if (!draft.title || !draft.slug || !draft.summary || !draft.body.trim()) { showMessage('아직 비어 있는 항목이 있습니다', '제목, 슬러그, 요약, 본문을 입력해 주세요.'); return; }
+      if (!apiUrl) { showMessage('로컬 편집 모드입니다', 'Markdown 받기로 파일을 저장하거나 PUBLIC_EDITOR_API_URL을 설정해 GitHub OAuth API를 연결해 주세요.'); return; }
+      const button = document.querySelector<HTMLButtonElement>(status === 'public' ? '#publish-button' : '#draft-button');
+      const originalLabel = button?.textContent ?? '';
+      if (button) { button.disabled = true; button.textContent = status === 'public' ? '발행 중…' : '저장 중…'; }
+      try {
+        const response = await fetch(`${apiUrl}/api/posts`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ ...draft, status, source: sourceRef }) });
+        if (!response.ok) throw new Error(response.status === 401 ? 'GitHub 로그인이 필요합니다.' : await readApiError(response, '저장 요청을 처리하지 못했습니다.'));
+        const result = await response.json();
+        sourceRef = result.source as SourceRef;
+        publishedSlug = result.publishedSlug || null;
+        updateRecordControls();
+        saveLocal();
+        showMessage(
+          status === 'public' ? '발행을 요청했습니다' : '임시 저장했습니다',
+          status === 'public'
+            ? '공개 저장소에 반영했으며 GitHub Pages 빌드가 곧 시작됩니다.'
+            : '비공개 원고 저장소에 보관했습니다. 기존 공개 글이 있더라도 공개본은 그대로 유지됩니다.',
+        );
+      } catch (error) { showMessage('저장하지 못했습니다', error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.'); }
+      finally { if (button) { button.disabled = false; button.textContent = originalLabel; } }
+    };
+
+    document.querySelector('#draft-button')?.addEventListener('click', () => saveToGitHub('draft'));
+    document.querySelector('#publish-button')?.addEventListener('click', () => saveToGitHub('public'));
+
+    const resetEditor = () => {
+      sourceRef = null;
+      publishedSlug = null;
+      ids.forEach((id) => { fields[id].value = id === 'date' ? new Date().toISOString().slice(0, 10) : ''; });
+      delete fields.slug.dataset.edited;
+      localStorage.removeItem(storageKey);
+      updatePreview();
+      updateRecordControls();
+      if (saveState) saveState.textContent = '새 글을 작성할 수 있습니다.';
+    };
+
+    deleteButton?.addEventListener('click', () => {
+      if (!sourceRef) return;
+      const message = document.querySelector<HTMLElement>('#delete-message');
+      if (message) message.textContent = sourceRef.status === 'public'
+        ? `발행 글 “${sourceRef.slug}”을 현재 사이트에서 내립니다. Git 히스토리와 외부 캐시에는 과거 내용이 남을 수 있으며, 별도 임시 저장본은 삭제하지 않습니다.`
+        : `임시 저장 글 “${sourceRef.slug}”을 비공개 원고 저장소에서 삭제합니다. 업로드한 이미지는 다른 글에서 사용할 수 있어 자동 삭제하지 않습니다.`;
+      deleteDialog?.showModal();
+    });
+
+    const deleteConfirmButton = document.querySelector<HTMLButtonElement>('#delete-confirm');
+    deleteConfirmButton?.addEventListener('click', async () => {
+      if (!sourceRef || !apiUrl) return;
+      const button = deleteConfirmButton;
+      const target = sourceRef;
+      button.disabled = true;
+      button.textContent = '삭제 중…';
+      try {
+        const response = await fetch(`${apiUrl}/api/posts/${encodeURIComponent(target.status)}/${encodeURIComponent(target.slug)}`, {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+          body: JSON.stringify({ sha: target.sha }),
+        });
+        if (!response.ok) throw new Error(response.status === 401 ? 'GitHub 로그인이 필요합니다.' : await readApiError(response, '글을 삭제하지 못했습니다.'));
+        deleteDialog?.close();
+        resetEditor();
+        showMessage(
+          target.status === 'public' ? '발행 글을 내렸습니다' : '임시 저장 글을 삭제했습니다',
+          target.status === 'public'
+            ? '다음 GitHub Pages 빌드부터 사이트에서 사라집니다. 과거 Git 기록은 삭제되지 않습니다.'
+            : '비공개 원고 파일을 삭제했습니다.',
+        );
+      } catch (error) {
+        deleteDialog?.close();
+        showMessage('삭제하지 못했습니다', error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.');
+      } finally {
+        button.disabled = false;
+        button.textContent = '삭제';
+      }
+    });
+
+    const checkSession = async () => {
+      if (!apiUrl || !connectionNote) return;
+      try {
+        const response = await fetch(`${apiUrl}/api/session`, { credentials: 'include' });
+        if (!response.ok) throw new Error();
+        const session = await response.json();
+        csrfToken = session.csrf;
+        connectionNote.classList.add('connected');
+        connectionNote.querySelector('span:nth-child(2)')!.textContent = `${session.login} 계정으로 연결됨`;
+        connectionNote.querySelector('a')?.remove();
+      } catch { connectionNote.querySelector('span:nth-child(2)')!.textContent = 'GitHub 로그인이 필요합니다.'; }
+    };
+
+    restore();
+    checkSession();
+    window.setInterval(saveLocal, 30_000);
+    window.addEventListener('beforeunload', saveLocal);
+  </script>
+</BaseLayout>
+
+<style>
+  :global(body) { background: color-mix(in srgb, var(--bg) 94%, var(--accent) 6%); }
+  :global(.site-header), :global(.site-footer) { display: none; }
+  .editor-page { width: min(100% - 40px, 1240px); margin: 0 auto; padding: 38px 0 64px; }
+  .editor-topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 24px; }
+  .editor-kicker { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.13em; }
+  .editor-topbar h1 { margin: 3px 0 0; font-family: 'Fraunces', Georgia, serif; font-size: 38px; font-weight: 500; }
+  .editor-actions { display: flex; align-items: center; gap: 10px; }
+  .save-state { margin-right: 8px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .button { padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .button:disabled { cursor: wait; opacity: .65; }
+  .button.ghost { background: var(--surface); color: var(--ink-soft); }
+  .button.primary { border-color: var(--accent); background: var(--accent); color: white; }
+  .button.danger { border-color: color-mix(in srgb, #c13c3c 55%, var(--line)); background: color-mix(in srgb, #c13c3c 8%, var(--surface)); color: #b02f2f; }
+  .connection-note { display: flex; align-items: center; gap: 9px; padding: 11px 14px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink-soft); font-size: 12.5px; }
+  .connection-note .status-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--warm); }
+  .connection-note.connected .status-dot { background: var(--accent); }
+  .connection-note a { margin-left: auto; color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; }
+  .frontmatter-panel, .writing-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
+  .frontmatter-panel { margin-bottom: 18px; }
+  .panel-heading { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .panel-heading > div:first-child { display: flex; align-items: baseline; gap: 10px; }
+  .panel-heading span { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
+  .panel-heading h2 { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: 17px; font-weight: 500; }
+  .collapse-button { border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 12px; }
+  .field-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; }
+  .field-grid label { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
+  .field-grid label.wide { grid-column: span 2; }
+  .field-grid label > span { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+  .field-grid input, .field-grid select { width: 100%; min-width: 0; height: 40px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; outline: 0; background: var(--bg); color: var(--ink); font-size: 13px; }
+  .field-grid input:focus, .field-grid select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .field-grid small { color: var(--ink-faint); font-size: 10.5px; }
+  .field-grid small.changed { color: var(--warm); line-height: 1.45; }
+  .writing-heading { min-height: 56px; }
+  .view-tabs { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .view-tabs button { padding: 5px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 11.5px; }
+  .view-tabs button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  .toolbar { display: flex; gap: 3px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  .toolbar button { display: grid; width: 34px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .toolbar button:hover { background: var(--accent-soft); color: var(--accent); }
+  .editor-split { display: grid; grid-template-columns: 1fr 1fr; min-height: 560px; }
+  .write-pane, .preview-pane { display: flex; min-width: 0; flex-direction: column; }
+  .write-pane { border-right: 1px solid var(--line); }
+  .write-pane.dragging { box-shadow: inset 0 0 0 3px var(--accent); }
+  .write-pane > label, .preview-pane > span { padding: 9px 16px; border-bottom: 1px solid var(--line); color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+  #body { width: 100%; min-height: 520px; flex: 1; padding: 24px; resize: vertical; border: 0; outline: 0; background: var(--surface); color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 14px; line-height: 1.8; }
+  .markdown-preview { min-height: 520px; padding: 24px 32px; overflow-wrap: anywhere; font-size: 16px; line-height: 1.8; }
+  .markdown-preview :global(h1), .markdown-preview :global(h2), .markdown-preview :global(h3) { margin: 1.6em 0 .55em; font-family: 'Fraunces', Georgia, serif; font-weight: 500; }
+  .markdown-preview :global(h1:first-child), .markdown-preview :global(h2:first-child) { margin-top: 0; }
+  .markdown-preview :global(p) { margin: 0 0 1.2em; }
+  .markdown-preview :global(blockquote) { margin: 1.5em 0; padding-left: 18px; border-left: 2px solid var(--accent); color: var(--ink-soft); font-family: 'Fraunces', Georgia, serif; font-style: italic; }
+  .markdown-preview :global(pre) { padding: 16px; overflow-x: auto; border-radius: 8px; background: #0d1117; color: #e6edf3; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
+  .markdown-preview :global(code:not(pre code)) { padding: 2px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: .86em; }
+  .markdown-preview :global(img) { border-radius: 9px; }
+  .markdown-preview :global(a) { color: var(--accent); text-decoration: underline; }
+  .placeholder { color: var(--ink-faint); }
+  .editor-split[data-view='write'] { grid-template-columns: 1fr; } .editor-split[data-view='write'] .preview-pane { display: none; }
+  .editor-split[data-view='preview'] { grid-template-columns: 1fr; } .editor-split[data-view='preview'] .write-pane { display: none; }
+  .editor-statusbar { display: flex; justify-content: space-between; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; }
+  dialog { max-width: 420px; padding: 0; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 80px rgba(0,0,0,.25); }
+  dialog::backdrop { background: rgba(13,17,23,.56); backdrop-filter: blur(3px); }
+  dialog form { padding: 26px; }
+  dialog h2 { margin: 0 0 10px; font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 500; }
+  dialog p { margin: 0 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
+  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .load-dialog { width: min(100% - 32px, 560px); }
+  .load-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
+  .load-dialog-head span { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .1em; }
+  .load-dialog-head h2 { margin: 3px 0 0; }
+  .load-dialog-head button { border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 24px; }
+  .remote-post-list { max-height: min(58vh, 520px); padding: 8px 0; overflow-y: auto; }
+  .remote-post-list > button { display: grid; width: 100%; grid-template-columns: 80px 1fr auto; align-items: center; gap: 12px; padding: 13px 24px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+  .remote-post-list > button:hover { background: var(--accent-soft); }
+  .remote-post-list strong { overflow: hidden; font-family: 'Fraunces', Georgia, serif; font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  .remote-status { font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+  .remote-status.public { color: var(--accent); } .remote-status.draft { color: var(--ink-faint); }
+  .loading-posts { padding: 34px 24px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-align: center; }
+  @media (max-width: 900px) { .field-grid { grid-template-columns: 1fr 1fr; } .editor-topbar { align-items: flex-start; flex-direction: column; } .editor-actions { width: 100%; flex-wrap: wrap; } .save-state { width: 100%; } }
+  @media (max-width: 700px) { .editor-page { width: min(100% - 24px, 1240px); padding-top: 24px; } .field-grid { grid-template-columns: 1fr; } .field-grid label.wide { grid-column: auto; } .editor-split { grid-template-columns: 1fr; } .editor-split[data-view='split'] .preview-pane { display: none; } .write-pane { border-right: 0; } .connection-note { align-items: flex-start; flex-wrap: wrap; } .connection-note a { width: 100%; margin: 4px 0 0 16px; } .toolbar { overflow-x: auto; } }
+</style>

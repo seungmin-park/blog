@@ -1,0 +1,124 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import PostMeta from '../components/PostMeta.astro';
+import { byNewest, postPath, withBase } from '../lib/posts';
+
+const posts = (await getCollection('posts', ({ data }) => data.status === 'public')).sort(byNewest);
+const featured = posts.find((post) => post.data.featured) ?? posts[0];
+const recent = posts.filter((post) => post.id !== featured?.id).slice(0, 4);
+---
+
+<BaseLayout active="posts">
+  <div class="wrap home-wrap">
+    <section class="hero" aria-labelledby="hero-title">
+      <div>
+        <h1 id="hero-title">느리게 쓰고,<br /><em>오래</em> 남기는 글</h1>
+        <p>코드를 짜는 사람이 문장도 짜야 한다면, 어떤 문장이어야 할까. 시스템을 설계하는 태도로 생각을 정리한 기록들.</p>
+      </div>
+      <div class="grid-motif" id="grid-motif" aria-hidden="true"></div>
+    </section>
+
+    <div class="commit-line"><span class="node"></span>latest commit · {featured ? '새 글이 도착했습니다' : '첫 글을 기다리는 중'}</div>
+
+    {featured && (
+      <a class="featured interactive-card" href={withBase(postPath(featured))}>
+        <div class="featured-visual" aria-hidden="true">
+          <div class="layer layer-one"><div class="layer layer-two"><div class="layer layer-three"><span></span></div></div></div>
+        </div>
+        <div class="featured-copy">
+          <PostMeta post={featured} />
+          <h2>{featured.data.title}</h2>
+          <p>{featured.data.summary}</p>
+          <div class="tags">
+            {featured.data.tags.map((tag, index) => <span class:list={['tag', { warm: index === featured.data.tags.length - 1 }]}>{tag}</span>)}
+          </div>
+          <span class="read-more">전체 읽기 →</span>
+        </div>
+      </a>
+    )}
+
+    <div class="section-head">
+      <h2>최근 글</h2>
+      <a href={withBase('/archive/')}>전체 보기 →</a>
+    </div>
+
+    <section class="post-grid" aria-label="최근 글 목록">
+      {recent.map((post) => (
+        <a class="post-card interactive-card" href={withBase(postPath(post))}>
+          <PostMeta post={post} />
+          <span class:list={['tag-dot', { warm: post.data.category === '에세이' }]}>{post.data.category}</span>
+          <h3>{post.data.title}</h3>
+          <p>{post.data.summary}</p>
+          <span class="read-more">읽기 →</span>
+        </a>
+      ))}
+    </section>
+  </div>
+
+  <script>
+    const motif = document.querySelector('#grid-motif');
+    if (motif) {
+      let seed = 42;
+      const random = () => {
+        seed = (seed * 9301 + 49297) % 233280;
+        return seed / 233280;
+      };
+      const fragment = document.createDocumentFragment();
+      for (let row = 0; row < 7; row += 1) {
+        for (let column = 0; column < 16; column += 1) {
+          const cell = document.createElement('span');
+          cell.style.opacity = String(0.08 + random() * 0.72);
+          fragment.append(cell);
+        }
+      }
+      motif.append(fragment);
+    }
+  </script>
+</BaseLayout>
+
+<style>
+  .home-wrap { padding-bottom: 72px; }
+  .hero { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 48px; align-items: center; padding: 88px 0 64px; }
+  .hero h1 { margin: 0 0 22px; font-family: 'Fraunces', Georgia, serif; font-size: clamp(40px, 5.4vw, 52px); font-weight: 500; letter-spacing: -0.015em; line-height: 1.12; }
+  .hero h1 em { color: var(--accent); font-weight: 500; }
+  .hero p { max-width: 480px; margin: 0; color: var(--ink-soft); font-size: 16.5px; line-height: 1.7; }
+  .grid-motif { display: grid; grid-template-columns: repeat(16, 9px); grid-auto-rows: 9px; gap: 4px; justify-self: end; }
+  .grid-motif span { width: 9px; height: 9px; border-radius: 2.5px; background: var(--accent); }
+  .commit-line { padding-bottom: 40px; }
+  .featured { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 40px; padding: 36px; margin-bottom: 64px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
+  .featured-visual { position: relative; display: grid; min-height: 220px; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
+  .featured-visual::before, .featured-visual::after { position: absolute; width: 1px; height: 100%; background: linear-gradient(transparent, var(--line), transparent); content: ''; transform: rotate(45deg); }
+  .featured-visual::after { transform: rotate(-45deg); }
+  .layer { display: grid; place-items: center; border: 1.5px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 13px; }
+  .layer-one { z-index: 1; width: 75%; height: 72%; }
+  .layer-two { width: 72%; height: 68%; border-color: color-mix(in srgb, var(--accent) 62%, transparent); }
+  .layer-three { width: 58%; height: 52%; border: 0; background: var(--accent); }
+  .layer-three span { width: 8px; height: 8px; border-radius: 50%; background: var(--surface); }
+  .featured-copy { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; justify-content: center; }
+  .featured-copy h2 { margin: 14px 0; font-family: 'Fraunces', Georgia, serif; font-size: 30px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.25; }
+  .featured-copy p { margin: 0 0 20px; color: var(--ink-soft); font-size: 15px; line-height: 1.75; }
+  .featured-copy .read-more { margin-top: 18px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
+  .section-head h2 { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
+  .section-head a { color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
+  .section-head a:hover { color: var(--accent); }
+  .post-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
+  .post-card { display: flex; min-height: 245px; padding: 28px; flex-direction: column; align-items: flex-start; background: var(--surface); transition: background 0.2s ease; }
+  .post-card:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
+  .post-card .tag-dot { margin: 16px 0 9px; }
+  .post-card h3 { margin: 0 0 10px; font-family: 'Fraunces', Georgia, serif; font-size: 19px; font-weight: 500; line-height: 1.35; }
+  .post-card p { margin: 0 0 14px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
+  .post-card .read-more { margin-top: auto; }
+  @media (max-width: 760px) {
+    .home-wrap { padding-bottom: 52px; }
+    .hero { grid-template-columns: 1fr; gap: 28px; padding: 60px 0 48px; }
+    .hero h1 { font-size: 38px; }
+    .grid-motif { grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; justify-self: start; }
+    .grid-motif span { width: 7px; height: 7px; }
+    .featured { grid-template-columns: 1fr; padding: 24px; }
+    .featured-visual { min-height: 190px; }
+    .post-grid { grid-template-columns: 1fr; }
+    .post-card { min-height: 220px; }
+  }
+</style>
