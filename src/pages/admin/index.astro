@@ -15,28 +15,18 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   <div class="editor-page" data-api-url={editorApi}>
     <header class="editor-topbar">
       <h1 id="editor-title">새 기록</h1>
-      <div class="editor-actions"><span class="save-state" id="save-state" role="status">이 기기에 저장됨</span><button class="button ghost" type="button" id="draft-button">임시 저장</button><button class="button primary" type="button" id="publish-button">발행</button></div>
+
     </header>
     <div class="draft-tools"><div><button class="new-note" type="button" id="new-button">＋ 새 기록</button><select id="local-drafts" aria-label="이 기기의 초안"></select></div><details class="editor-more"><summary>더보기</summary><div><button type="button" id="load-button">서버의 글 불러오기</button><button type="button" id="download-button">Markdown 내려받기</button><button type="button" id="archive-local">기기의 초안 삭제</button><button type="button" id="restore-local" hidden>최근 삭제한 초안 복구</button><button type="button" id="delete-button" hidden>서버의 글 삭제</button></div></details></div>
 
-    <div class="connection-note" id="connection-note">
-      <span class="status-dot"></span>
-      <span>{editorApi ? 'GitHub 연결 상태를 확인하는 중입니다.' : '기기에 자동 저장 중 · 서버 저장은 아직 연결되지 않았습니다.'}</span>
-      {editorApi && <a id="login-link" href={`${editorApi}/auth/login`}>GitHub 로그인 →</a>}
-    <button type="button" id="logout-button" hidden>로그아웃</button></div>
+
 
     <section class="frontmatter-panel" aria-label="글 정보">
       <div class="field-grid">
         <label class="wide"><span class="field-label sr-only">제목</span><input id="title" placeholder="제목을 입력하세요" /></label>
 
       </div>
-      <details class="additional-settings"><summary>추가 설정</summary><div class="field-grid" id="meta-fields">
-        <label><span>날짜</span><input id="date" type="date" /></label>
-        <label><span>분류</span><input id="category" placeholder="미분류" /></label>
-        <label class="wide"><span>한 줄 요약</span><input id="summary" placeholder="선택 사항" /></label>
-        <label class="wide"><span>글 주소</span><input id="slug" /><small id="slug-note">자동 생성됩니다.</small></label>
-        <label class="wide"><span>썸네일</span><input id="thumbnail" placeholder="선택 사항" /></label>
-      </div></details>
+
     </section>
 
     <section class="writing-panel" aria-labelledby="body-title">
@@ -61,11 +51,11 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       </div>
       <div class="editor-split" id="editor-split" data-view="write">
         <div class="write-pane">
-          <label for="body">Markdown</label>
+          <label for="body">작성</label>
           <textarea id="body" spellcheck="true" placeholder="Markdown으로 작성하세요."></textarea>
         </div>
         <div class="preview-pane">
-          <span>Preview</span>
+          <span>미리보기</span>
           <article id="markdown-preview" class="markdown-preview"><p class="placeholder">왼쪽에 쓴 내용이 여기에 보입니다.</p></article>
         </div>
       </div>
@@ -74,7 +64,20 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         <span>입력 후 자동 저장 · 서버 보관은 임시 저장</span>
       </div>
     </section>
-    <section class="post-tags" aria-label="글 태그"><div class="field-grid"><label class="wide"><span class="field-label">태그</span><input id="tags" list="known-tags" placeholder="태그 추가" /><datalist id="known-tags">{knownTags.map(tag => <option value={tag} />)}</datalist><div id="tag-chips"></div></label></div></section>
+    <section class="post-tags" aria-label="글 태그"><div class="field-grid"><div class="tag-field" aria-labelledby="tags-label"><span class="field-label" id="tags-label">태그</span><input id="tags" type="hidden" /><div class="tag-entry-row"><input id="tag-entry" list="known-tags" placeholder="태그 입력" aria-label="추가할 태그" /><button type="button" id="add-tag" disabled>추가</button></div><datalist id="known-tags">{knownTags.map(tag => <option value={tag} />)}</datalist><div id="tag-chips"></div></div></div></section>
+      <details class="additional-settings"><summary>추가 설정</summary><div class="field-grid" id="meta-fields">
+        <label><span>날짜</span><input id="date" type="date" /></label>
+        <label><span>분류</span><input id="category" placeholder="미분류" /></label>
+        <label class="wide"><span>한 줄 요약</span><input id="summary" placeholder="선택 사항" /></label>
+        <label class="wide"><span>글 주소</span><input id="slug" /><small id="slug-note">자동 생성됩니다.</small></label>
+        <label class="wide"><span>썸네일</span><input id="thumbnail" placeholder="선택 사항" /></label>
+      </div></details>
+    <footer class="editor-footer"><div class="editor-actions"><span class="save-state" id="save-state" role="status">이 기기에 저장됨</span><button class="button ghost" type="button" id="draft-button">임시 저장</button><button class="button primary" type="button" id="publish-button">발행</button></div></footer>
+    <div class="connection-note" id="connection-note">
+      <span class="status-dot"></span>
+      <span>{editorApi ? 'GitHub 연결 상태를 확인하는 중입니다.' : '기기에 자동 저장 중 · 서버 저장은 아직 연결되지 않았습니다.'}</span>
+      {editorApi && <a id="login-link" href={`${editorApi}/auth/login`}>GitHub 로그인 →</a>}
+    <button type="button" id="logout-button" class="account-button" hidden>로그아웃</button></div>
   </div>
 
   <dialog id="message-dialog">
@@ -105,8 +108,9 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   </dialog>
 
   <script>
+    import { enhanceSelect } from '../../lib/select-menu';
     import { normalizeTags } from '../../lib/note-filters.mjs';
-    import { createStore } from '../../lib/editor-store.mjs';
+    import { createStore, findLocalCopy } from '../../lib/editor-store.mjs';
     import { assetPath } from '../../lib/markdown-images.mjs';
     import { micromark } from 'micromark';
     import { gfm, gfmHtml } from 'micromark-extension-gfm';
@@ -142,12 +146,12 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     const getDraft = (): Draft => ({
       title: fields.title.value.trim(), slug: fields.slug.value.trim(), date: fields.date.value,
       category: fields.category.value.trim(),
-      tags: normalizeTags(fields.tags.value).join(', '), summary: fields.summary.value.trim(),
+      tags: normalizeTags(fields.tags.value+','+tagEntry.value).join(', '), summary: fields.summary.value.trim(),
       thumbnail: fields.thumbnail.value.trim(), body: fields.body.value,
     });
 
     const previewImages = new Map<string,string>();
-    const updatePreview = () => {
+    const updatePreview = (pending = false) => {
       if (preview) {
         preview.innerHTML = renderMarkdown(fields.body.value);
         preview.querySelectorAll<HTMLImageElement>('img').forEach(image=>{
@@ -161,7 +165,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       }
       const count = fields.body.value.replace(/\s/g, '').length;
       if (wordCount) wordCount.textContent = `${count.toLocaleString('ko-KR')}자`;
-      if (saveState) saveState.textContent = '저장 대기 중…';
+      if (saveState && pending) saveState.textContent = '저장 대기 중…';
     };
 
     const updateRecordControls = () => {
@@ -186,9 +190,10 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     let saveTimer: ReturnType<typeof setTimeout>;
     const today = () => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const localSelect = document.querySelector<HTMLSelectElement>('#local-drafts')!;
+    const localDropdown = enhanceSelect(localSelect);
     const renderLocalList = () => {
       document.querySelector<HTMLButtonElement>('#restore-local')!.hidden=store.trash().length===0;
-      localSelect.replaceChildren(...store.list().map((note: any) => { const option=document.createElement('option');option.value=note.id;option.textContent=note.draft?.title || '제목 없는 기록';option.selected=note.id===localNote?.id;return option; }));
+      localSelect.replaceChildren(...store.list().map((note: any) => { const option=document.createElement('option');option.value=note.id;option.textContent=note.draft?.title || '제목 없는 기록';option.selected=note.id===localNote?.id;return option; }));localDropdown.update();
     };
     const saveLocal = () => {
       try {
@@ -200,18 +205,19 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     };
     const slugify = (value: string) => value.toLocaleLowerCase('ko').trim().replace(/[^a-z0-9가-힣]+/g,'-').replace(/^-|-$/g,'').slice(0,100);
     const openLocal = (note: any) => {
+      tagEntry.value='';addTag.disabled=true;
       localNote=note;sourceRef=note.source??null;publishedSlug=note.publishedSlug??null;
       ids.forEach(id=>{fields[id].value=String(note.draft?.[id]??(id==='date'?today():''));});
       // Keep an existing URL stable when a title changes, including after reload.
       fields.slug.dataset.edited='true';dirty=false;updatePreview();updateRecordControls();renderLocalList();
       document.querySelector('#editor-title')!.textContent=sourceRef?'글 수정':'새 기록';
-      renderTagChips();
+      renderTagChips();if(saveState)saveState.textContent='이 기기에 저장됨';
     };
     const newLocal = () => {
       openLocal(store.create({draft:{date:today(),slug:'note-'+crypto.randomUUID().slice(0,12)},source:null,publishedSlug:null}));
       fields.title.focus();
     };
-    document.querySelector('#archive-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;store.archive(localNote.id);newLocal();});
+    document.querySelector('#archive-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;store.archive(localNote.id);const next=store.list()[0];if(next)openLocal(store.select(next.id));else newLocal();});
     document.querySelector('#restore-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;const note=store.trash()[0];if(note)openLocal(store.restore(note.id));});
     const restore = () => {
       try {
@@ -220,8 +226,8 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         openLocal(note);if(saveState)saveState.textContent='이 기기의 초안을 불러왔습니다';
       } catch(error){if(saveState)saveState.textContent=error instanceof Error?error.message:'초안 복원 실패';}
     };
-    document.querySelector('#new-button')?.addEventListener('click',()=>{if(busy || !saveLocal())return;newLocal();});
-    localSelect.addEventListener('change',()=>{const id=localSelect.value;if(!saveLocal())return;openLocal(store.select(id));});
+    document.querySelector('#new-button')?.addEventListener('click',()=>{if(busy)return;if(!saveLocal()){showMessage('현재 원고를 먼저 보관해 주세요',saveState?.textContent || '기기 저장 실패');return;}newLocal();});
+    localSelect.addEventListener('change',()=>{const id=localSelect.value;if(!saveLocal()){localSelect.value=localNote.id;localDropdown.update();showMessage('현재 원고를 먼저 보관해 주세요',saveState?.textContent || '기기 저장 실패');return;}openLocal(store.select(id));});
     document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)saveLocal();});
     window.addEventListener('pagehide',()=>{if(dirty)saveLocal();});
     const renderTagChips = () => {
@@ -229,8 +235,18 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       const root=document.querySelector('#tag-chips')!;root.replaceChildren();
       tags.forEach(tag=>{const button=document.createElement('button');button.type='button';button.textContent=tag+' ×';button.setAttribute('aria-label',tag+' 태그 제거');button.addEventListener('click',()=>{fields.tags.value=tags.filter(t=>t!==tag).join(', ');fields.tags.dispatchEvent(new Event('input'));});root.append(button);});
     };
-    fields.tags.addEventListener('keydown',event=>{if((event as KeyboardEvent).key==='Enter'){event.preventDefault();fields.tags.value=normalizeTags(fields.tags.value).join(', ')+', ';fields.tags.dispatchEvent(new Event('input'));}});
+    const tagEntry=document.querySelector<HTMLInputElement>('#tag-entry')!;
+    const addTag=document.querySelector<HTMLButtonElement>('#add-tag')!;
+    const commitTag = () => {
+      fields.tags.value=normalizeTags(fields.tags.value+','+tagEntry.value).join(', ');tagEntry.value='';addTag.disabled=true;
+      fields.tags.dispatchEvent(new Event('input'));renderTagChips();
+    };
+    tagEntry.addEventListener('input',()=>{addTag.disabled=!tagEntry.value.trim();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveLocal,500);});
+    tagEntry.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();commitTag();}});
+    addTag.addEventListener('click',commitTag);
     fields.tags.addEventListener('input',renderTagChips);
+    const smallScreen=window.matchMedia('(max-width:700px)');
+    smallScreen.addEventListener('change',()=>{if(smallScreen.matches)document.querySelector<HTMLButtonElement>('[data-view="write"]')?.click();});
 
     const stableCommit = (value: string) => {
       let hash = 0;
@@ -275,7 +291,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       const selected = area.value.slice(start, end) || placeholder;
       area.setRangeText(`${before}${selected}${after}`, start, end, 'select');
       area.focus();
-      updatePreview();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveLocal,500);
+      dirty=true;updatePreview(true);clearTimeout(saveTimer);saveTimer=setTimeout(saveLocal,500);
     };
 
     const formatters: Record<string, () => void> = {
@@ -287,7 +303,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
 
     ids.forEach((id) => fields[id].addEventListener('input', () => {
       if (id === 'title' && !fields.slug.dataset.edited) fields.slug.value = slugify(fields.title.value);
-      updatePreview();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveLocal,500);
+      dirty=true;updatePreview(true);clearTimeout(saveTimer);saveTimer=setTimeout(saveLocal,500);
     }));
     fields.slug.addEventListener('input', () => { fields.slug.dataset.edited = 'true'; updateRecordControls(); });
     document.querySelectorAll<HTMLButtonElement>('[data-format]').forEach((button) => button.addEventListener('click', () => formatters[button.dataset.format ?? '']?.()));
@@ -388,8 +404,9 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
               if (!detail.ok) throw new Error('글을 불러오지 못했습니다.');
               const result = await detail.json();
               const loaded = result.post as LoadedPost;
-              if (!saveLocal()) return;
-              openLocal(store.create({draft:loaded,source:result.source,publishedSlug:loaded.publishedSlug || null}));
+              if (!saveLocal()) { loadDialog?.close();showMessage('현재 원고를 먼저 보관해 주세요',saveState?.textContent || '기기 저장에 실패했습니다. 현재 내용을 내려받고 다시 열어 주세요.');return; }
+              const existing = findLocalCopy(store.list(),result.source,loaded,ids);
+              openLocal(existing ? store.select(existing.id) : store.create({draft:loaded,source:result.source,publishedSlug:loaded.publishedSlug || null}));
               sourceRef = result.source as SourceRef;
               publishedSlug = loaded.publishedSlug || (sourceRef.status === 'public' ? sourceRef.slug : null);
               fields.slug.dataset.edited = 'true';
@@ -408,6 +425,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     document.querySelector('#load-close')?.addEventListener('click', () => loadDialog?.close());
 
     const saveToGitHub = async (status: SaveStatus) => {
+      commitTag();
       const draft = getDraft();
       if (status === 'public' && (!draft.title || !draft.body.trim())) { showMessage('아직 비어 있는 항목이 있습니다', '발행하려면 제목과 본문을 입력해 주세요.'); return; }
       if (!saveLocal()) return;
@@ -416,7 +434,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       if (!apiUrl) { showMessage('로컬 편집 모드입니다', 'Markdown 받기로 파일을 저장하거나 PUBLIC_EDITOR_API_URL을 설정해 GitHub OAuth API를 연결해 주세요.'); return; }
       const button = document.querySelector<HTMLButtonElement>(status === 'public' ? '#publish-button' : '#draft-button');
       const originalLabel = button?.textContent ?? '';
-      if(busy)return;busy=true;localSelect.disabled=true;ids.forEach(id=>fields[id].readOnly=true);
+      if(busy)return;busy=true;localSelect.disabled=true;localDropdown.update();ids.forEach(id=>fields[id].readOnly=true);
       document.querySelector<HTMLButtonElement>('#new-button')!.disabled=true;
       if (button) { button.disabled = true; button.textContent = status === 'public' ? '발행 중…' : '저장 중…'; }
       try {
@@ -442,7 +460,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
           );
         }
       } catch (error) { showMessage('저장하지 못했습니다', error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.'); }
-      finally {busy=false;localSelect.disabled=false;ids.forEach(id=>fields[id].readOnly=false);document.querySelector<HTMLButtonElement>('#new-button')!.disabled=false;if (button) { button.disabled = false; button.textContent = originalLabel; } }
+      finally {busy=false;localSelect.disabled=false;localDropdown.update();ids.forEach(id=>fields[id].readOnly=false);document.querySelector<HTMLButtonElement>('#new-button')!.disabled=false;if (button) { button.disabled = false; button.textContent = originalLabel; } }
     };
 
     document.querySelector('#draft-button')?.addEventListener('click', () => saveToGitHub('draft'));

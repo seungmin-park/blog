@@ -8,23 +8,25 @@ const tags=[...new Set(posts.flatMap(p=>p.data.tags))].sort((a,b)=>a.localeCompa
 <BaseLayout title="도토리 창고" description="배운 내용과 생각을 정리하는 개인 블로그" active="posts">
 <div class="wrap library">
 <header class="library-heading"><h1 id="list-heading">모든 기록</h1><label> <span class="sr-only">기록 검색</span><input id="search-notes" type="search" placeholder="기록 검색"/><kbd>/</kbd></label></header>
-<div class="library-tools"><label>주제 <select id="tag-filter"><option value="">전체</option>{tags.map(tag=><option value={tag}>{tag}</option>)}</select></label><span id="result-count" role="status">{posts.length}개</span></div>
+<div class="library-tools"><div class="topic-field" hidden={tags.length===0}><span>주제</span> <select id="tag-filter" aria-label="주제 선택"><option value="">전체</option>{tags.map(tag=><option value={tag}>{tag}</option>)}</select></div><span id="result-count" role="status">{posts.length}개</span></div>
 <div id="records">
 {posts.map(post=><article class="record" data-tags={JSON.stringify(post.data.tags)} data-search={[post.data.title,post.data.summary,...post.data.tags,post.body??''].join(' ').toLocaleLowerCase('ko')} data-id={post.data.slug}>
 <a href={withBase(postPath(post))}><div class="record-meta"><span>{post.data.category}</span><time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time></div><h2>{post.data.title}</h2><p>{post.data.summary}</p><div class="record-tags">{post.data.tags.map(tag=><span>#{tag}</span>)}</div></a><button class="save-record" aria-label={`${post.data.title} 다시 읽기`} aria-pressed="false">책갈피</button>
 </article>)}
-</div><div id="no-results" hidden><p>조건에 맞는 기록이 없습니다.</p><button id="reset-search">필터 초기화</button></div>
+</div><div id="no-results" hidden><p>{posts.length ? '조건에 맞는 기록이 없습니다.' : '아직 공개된 기록이 없습니다.'}</p><button id="reset-search" hidden={posts.length===0}>필터 초기화</button></div>
 </div>
 <script>
+ import { enhanceSelect } from '../lib/select-menu';
  import { matchesRecord } from '../lib/note-filters.mjs';
  const search=document.querySelector<HTMLInputElement>('#search-notes')!;
  const tags=document.querySelector<HTMLSelectElement>('#tag-filter')!;
+ const tagDropdown=enhanceSelect(tags);
  const rows=[...document.querySelectorAll<HTMLElement>('.record')];
  let saved:string[]=[];try{saved=JSON.parse(localStorage.getItem('blog-reading-list')||'[]');if(!Array.isArray(saved))saved=[];}catch{}
  const savedOnly=new URL(location.href).searchParams.has('saved');
  if(savedOnly)document.querySelector('#list-heading')!.textContent='다시 읽기';
  const params=new URL(location.href).searchParams;search.value=params.get('q')||'';tags.value=params.get('tag')||'';
- function apply(){let count=0;rows.forEach(row=>{row.hidden=!( (!savedOnly||saved.includes(row.dataset.id!)) && matchesRecord({tags:JSON.parse(row.dataset.tags!),search:row.dataset.search!},{tag:tags.value,query:search.value}) );if(!row.hidden)count++;row.querySelector('button')!.setAttribute('aria-pressed',String(saved.includes(row.dataset.id!)));});document.querySelector('#result-count')!.textContent=count+'개';document.querySelector<HTMLElement>('#no-results')!.hidden=count>0;const url=new URL(location.href);for(const [key,value]of [['q',search.value],['tag',tags.value]]){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}history.replaceState(null,'',url);}
+ function apply(){let count=0;rows.forEach(row=>{row.hidden=!( (!savedOnly||saved.includes(row.dataset.id!)) && matchesRecord({tags:JSON.parse(row.dataset.tags!),search:row.dataset.search!},{tag:tags.value,query:search.value}) );if(!row.hidden)count++;row.querySelector('button')!.setAttribute('aria-pressed',String(saved.includes(row.dataset.id!)));});document.querySelector('#result-count')!.textContent=count+'개';document.querySelector<HTMLElement>('#no-results')!.hidden=count>0;const url=new URL(location.href);for(const [key,value]of [['q',search.value],['tag',tags.value]]){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}history.replaceState(null,'',url);tagDropdown.update();}
  search.addEventListener('input',apply);tags.addEventListener('change',apply);document.querySelector('#reset-search')?.addEventListener('click',()=>{search.value='';tags.value='';apply();});
  rows.forEach(row=>row.querySelector('button')!.addEventListener('click',()=>{const id=row.dataset.id!;const next=saved.includes(id)?saved.filter(value=>value!==id):[...saved,id];try{localStorage.setItem('blog-reading-list',JSON.stringify(next));saved=next;apply();}catch{document.querySelector('#result-count')!.textContent='책갈피 저장 실패';}}));
  document.addEventListener('keydown',event=>{if(event.key==='/'&&!(event.target instanceof HTMLElement&&event.target.matches('input,textarea,select'))){event.preventDefault();search.focus();}});apply();
