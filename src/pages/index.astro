@@ -1,96 +1,32 @@
 ---
-import { getCollection } from 'astro:content';
+import {getCollection} from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
-import PostMeta from '../components/PostMeta.astro';
-import { byNewest, postPath, withBase } from '../lib/posts';
-
-const posts = (await getCollection('posts', ({ data }) => data.status === 'public')).sort(byNewest);
-const featured = posts.find((post) => post.data.featured) ?? posts[0];
-const recent = posts.filter((post) => post.id !== featured?.id).slice(0, 4);
+import {byNewest,withBase,postPath,formatDate} from '../lib/posts';
+const posts=(await getCollection('posts',({data})=>data.status==='public')).sort(byNewest);
+const tags=[...new Set(posts.flatMap(p=>p.data.tags))].sort((a,b)=>a.localeCompare(b,'ko'));
 ---
-
-<BaseLayout active="posts">
-  <div class="wrap home-wrap">
-    <section class="hero" aria-labelledby="hero-title">
-      <h1 id="hero-title"><em>그냥</em> 남기는 글</h1>
-    </section>
-
-    <div class="commit-line"><span class="node"></span>latest commit · {featured ? '새 글이 도착했습니다' : '첫 글을 기다리는 중'}</div>
-
-    {featured && (
-      <a class="featured interactive-card" href={withBase(postPath(featured))}>
-        <div class="featured-visual" aria-hidden="true">
-          <div class="layer layer-one"><div class="layer layer-two"><div class="layer layer-three"><span></span></div></div></div>
-        </div>
-        <div class="featured-copy">
-          <PostMeta post={featured} />
-          <h2>{featured.data.title}</h2>
-          <p>{featured.data.summary}</p>
-          <div class="tags">
-            {featured.data.tags.map((tag, index) => <span class:list={['tag', { warm: index === featured.data.tags.length - 1 }]}>{tag}</span>)}
-          </div>
-          <span class="read-more">전체 읽기 →</span>
-        </div>
-      </a>
-    )}
-
-    <div class="section-head">
-      <h2>최근 글</h2>
-      <a href={withBase('/archive/')}>전체 보기 →</a>
-    </div>
-
-    <section class="post-grid" aria-label="최근 글 목록">
-      {recent.map((post) => (
-        <a class="post-card interactive-card" href={withBase(postPath(post))}>
-          <PostMeta post={post} />
-          <span class:list={['tag-dot', { warm: post.data.category === '에세이' }]}>{post.data.category}</span>
-          <h3>{post.data.title}</h3>
-          <p>{post.data.summary}</p>
-          <span class="read-more">읽기 →</span>
-        </a>
-      ))}
-    </section>
-  </div>
-
+<BaseLayout title="도토리 창고" description="배운 내용과 생각을 정리하는 개인 블로그" active="posts">
+<div class="wrap library">
+<header class="library-heading"><h1 id="list-heading">모든 기록</h1><label> <span class="sr-only">기록 검색</span><input id="search-notes" type="search" placeholder="기록 검색"/><kbd>/</kbd></label></header>
+<div class="library-tools"><label>주제 <select id="tag-filter"><option value="">전체</option>{tags.map(tag=><option value={tag}>{tag}</option>)}</select></label><span id="result-count" role="status">{posts.length}개</span></div>
+<div id="records">
+{posts.map(post=><article class="record" data-tags={JSON.stringify(post.data.tags)} data-search={[post.data.title,post.data.summary,...post.data.tags,post.body??''].join(' ').toLocaleLowerCase('ko')} data-id={post.data.slug}>
+<a href={withBase(postPath(post))}><div class="record-meta"><span>{post.data.category}</span><time datetime={post.data.date.toISOString()}>{formatDate(post.data.date)}</time></div><h2>{post.data.title}</h2><p>{post.data.summary}</p><div class="record-tags">{post.data.tags.map(tag=><span>#{tag}</span>)}</div></a><button class="save-record" aria-label={`${post.data.title} 다시 읽기`} aria-pressed="false">책갈피</button>
+</article>)}
+</div><div id="no-results" hidden><p>조건에 맞는 기록이 없습니다.</p><button id="reset-search">필터 초기화</button></div>
+</div>
+<script>
+ import { matchesRecord } from '../lib/note-filters.mjs';
+ const search=document.querySelector<HTMLInputElement>('#search-notes')!;
+ const tags=document.querySelector<HTMLSelectElement>('#tag-filter')!;
+ const rows=[...document.querySelectorAll<HTMLElement>('.record')];
+ let saved:string[]=[];try{saved=JSON.parse(localStorage.getItem('blog-reading-list')||'[]');if(!Array.isArray(saved))saved=[];}catch{}
+ const savedOnly=new URL(location.href).searchParams.has('saved');
+ if(savedOnly)document.querySelector('#list-heading')!.textContent='다시 읽기';
+ const params=new URL(location.href).searchParams;search.value=params.get('q')||'';tags.value=params.get('tag')||'';
+ function apply(){let count=0;rows.forEach(row=>{row.hidden=!( (!savedOnly||saved.includes(row.dataset.id!)) && matchesRecord({tags:JSON.parse(row.dataset.tags!),search:row.dataset.search!},{tag:tags.value,query:search.value}) );if(!row.hidden)count++;row.querySelector('button')!.setAttribute('aria-pressed',String(saved.includes(row.dataset.id!)));});document.querySelector('#result-count')!.textContent=count+'개';document.querySelector<HTMLElement>('#no-results')!.hidden=count>0;const url=new URL(location.href);for(const [key,value]of [['q',search.value],['tag',tags.value]]){if(value)url.searchParams.set(key,value);else url.searchParams.delete(key);}history.replaceState(null,'',url);}
+ search.addEventListener('input',apply);tags.addEventListener('change',apply);document.querySelector('#reset-search')?.addEventListener('click',()=>{search.value='';tags.value='';apply();});
+ rows.forEach(row=>row.querySelector('button')!.addEventListener('click',()=>{const id=row.dataset.id!;const next=saved.includes(id)?saved.filter(value=>value!==id):[...saved,id];try{localStorage.setItem('blog-reading-list',JSON.stringify(next));saved=next;apply();}catch{document.querySelector('#result-count')!.textContent='책갈피 저장 실패';}}));
+ document.addEventListener('keydown',event=>{if(event.key==='/'&&!(event.target instanceof HTMLElement&&event.target.matches('input,textarea,select'))){event.preventDefault();search.focus();}});apply();
+</script>
 </BaseLayout>
-
-<style>
-  .home-wrap { padding-bottom: 72px; }
-  .hero { padding: clamp(56px, 8vw, 84px) 0 clamp(40px, 5vw, 52px); }
-  .hero h1 { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: clamp(42px, 5.8vw, 56px); font-weight: 500; letter-spacing: -0.02em; line-height: 1.12; }
-  .hero h1 em { color: var(--accent); font-weight: 500; }
-  .commit-line { padding-bottom: clamp(32px, 4vw, 40px); }
-  .featured { display: grid; grid-template-columns: 0.85fr 1.15fr; gap: 40px; padding: 36px; margin-bottom: 64px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface); box-shadow: var(--shadow); }
-  .featured-visual { position: relative; display: grid; min-height: 220px; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: color-mix(in srgb, var(--accent) 5%, var(--surface)); }
-  .featured-visual::before, .featured-visual::after { position: absolute; width: 1px; height: 100%; background: linear-gradient(transparent, var(--line), transparent); content: ''; transform: rotate(45deg); }
-  .featured-visual::after { transform: rotate(-45deg); }
-  .layer { display: grid; place-items: center; border: 1.5px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 13px; }
-  .layer-one { z-index: 1; width: 75%; height: 72%; }
-  .layer-two { width: 72%; height: 68%; border-color: color-mix(in srgb, var(--accent) 62%, transparent); }
-  .layer-three { width: 58%; height: 52%; border: 0; background: var(--accent); }
-  .layer-three span { width: 8px; height: 8px; border-radius: 50%; background: var(--surface); }
-  .featured-copy { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; justify-content: center; }
-  .featured-copy h2 { margin: 14px 0; font-family: 'Fraunces', Georgia, serif; font-size: 30px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.25; }
-  .featured-copy p { margin: 0 0 20px; color: var(--ink-soft); font-size: 15px; line-height: 1.75; }
-  .featured-copy .read-more { margin-top: 18px; }
-  .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 28px; }
-  .section-head h2 { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 500; letter-spacing: -0.01em; }
-  .section-head a { color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; }
-  .section-head a:hover { color: var(--accent); }
-  .post-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--line); }
-  .post-card { display: flex; min-height: 245px; padding: 28px; flex-direction: column; align-items: flex-start; background: var(--surface); transition: background 0.2s ease; }
-  .post-card:hover { background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
-  .post-card .tag-dot { margin: 16px 0 9px; }
-  .post-card h3 { margin: 0 0 10px; font-family: 'Fraunces', Georgia, serif; font-size: 19px; font-weight: 500; line-height: 1.35; }
-  .post-card p { margin: 0 0 14px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
-  .post-card .read-more { margin-top: auto; }
-  @media (max-width: 760px) {
-    .home-wrap { padding-bottom: 52px; }
-    .hero { padding: 52px 0 36px; }
-    .hero h1 { font-size: 40px; }
-    .featured { grid-template-columns: 1fr; padding: 24px; }
-    .featured-visual { min-height: 190px; }
-    .post-grid { grid-template-columns: 1fr; }
-    .post-card { min-height: 220px; }
-  }
-</style>

@@ -1,22 +1,16 @@
 ---
 import ThemeToggle from './ThemeToggle.astro';
 import { withBase } from '../lib/posts';
-
-interface Props {
-  active?: 'posts' | 'archive';
-  progress?: boolean;
-}
-
-const { active, progress = false } = Astro.props;
+interface Props { active?: 'posts' | 'archive'; progress?: boolean; }
+const {progress=false}=Astro.props;
 ---
-
 <header class="site-header">
-  <div class="wrap header-inner">
-    <a class="brand" href={withBase('/')} aria-label="박승민 홈">박승민<span class="dot">.log</span></a>
+  <div class="header-inner">
+    <a class="brand" href={withBase('/')}>도토리 창고</a>
     <nav aria-label="주요 메뉴">
-      <a href={withBase('/')} aria-current={active === 'posts' ? 'page' : undefined}>글</a>
-      <a href={withBase('/archive/')} aria-current={active === 'archive' ? 'page' : undefined}>아카이브</a>
-      <a href="https://www.linkedin.com/in/seungmin-park/" rel="me noreferrer">LinkedIn</a>
+      <a href={withBase('/')} aria-current={Astro.url.pathname === import.meta.env.BASE_URL && !Astro.url.search ? 'page' : undefined}>모든 기록</a>
+      <a href={withBase('/?saved=1')}>다시 읽기</a>
+      <a href={withBase('/admin/')} id="manage-link" aria-current={Astro.url.pathname.includes('/admin/') ? 'page' : undefined}>관리</a>
       <ThemeToggle />
     </nav>
   </div>
