@@ -18,15 +18,17 @@ export function enhanceSelect(select: HTMLSelectElement) {
   details.append(summary, menu);
   select.after(details);
   function update() {
+    summary.setAttribute("aria-disabled", String(select.disabled));
     text.textContent = select.selectedOptions[0]?.textContent || "선택";
     menu.replaceChildren();
     Array.from(select.options).forEach((option) => {
       const button = document.createElement("button");
       button.type = "button";
       button.textContent = option.textContent;
-      button.disabled = option.disabled;
+      button.disabled = option.disabled || select.disabled;
       button.setAttribute("aria-pressed", String(option.selected));
       button.addEventListener("click", () => {
+        if (select.disabled) return;
         select.value = option.value;
         details.open = false;
         select.dispatchEvent(new Event("change", { bubbles: true }));
@@ -38,7 +40,11 @@ export function enhanceSelect(select: HTMLSelectElement) {
   }
   select.addEventListener("change", update);
   select.addEventListener("optionschange", update);
+  summary.addEventListener("click", (event) => {
+    if (select.disabled) event.preventDefault();
+  });
   summary.addEventListener("keydown", (event) => {
+    if (select.disabled) return;
     if (event.key === "ArrowDown") {
       event.preventDefault();
       details.open = true;

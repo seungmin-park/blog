@@ -434,7 +434,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       if (!apiUrl) { showMessage('로컬 편집 모드입니다', 'Markdown 받기로 파일을 저장하거나 PUBLIC_EDITOR_API_URL을 설정해 GitHub OAuth API를 연결해 주세요.'); return; }
       const button = document.querySelector<HTMLButtonElement>(status === 'public' ? '#publish-button' : '#draft-button');
       const originalLabel = button?.textContent ?? '';
-      if(busy)return;busy=true;localSelect.disabled=true;ids.forEach(id=>fields[id].readOnly=true);
+      if(busy)return;busy=true;localSelect.disabled=true;localDropdown.update();ids.forEach(id=>fields[id].readOnly=true);
       document.querySelector<HTMLButtonElement>('#new-button')!.disabled=true;
       if (button) { button.disabled = true; button.textContent = status === 'public' ? '발행 중…' : '저장 중…'; }
       try {
@@ -460,7 +460,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
           );
         }
       } catch (error) { showMessage('저장하지 못했습니다', error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.'); }
-      finally {busy=false;localSelect.disabled=false;ids.forEach(id=>fields[id].readOnly=false);document.querySelector<HTMLButtonElement>('#new-button')!.disabled=false;if (button) { button.disabled = false; button.textContent = originalLabel; } }
+      finally {busy=false;localSelect.disabled=false;localDropdown.update();ids.forEach(id=>fields[id].readOnly=false);document.querySelector<HTMLButtonElement>('#new-button')!.disabled=false;if (button) { button.disabled = false; button.textContent = originalLabel; } }
     };
 
     document.querySelector('#draft-button')?.addEventListener('click', () => saveToGitHub('draft'));
