@@ -9,14 +9,17 @@ export default {
     if (request.method === 'OPTIONS') return corsResponse(request, env, new Response(null, { status: 204 }));
 
     try {
+      if (url.pathname.startsWith('/api/') && request.headers.get('Origin') && request.headers.get('Origin') !== env.EDITOR_ORIGIN) throw new HttpError(403, 'Origin not allowed');
       let response;
       if (url.pathname === '/auth/login' && request.method === 'GET') response = await startLogin(request, env);
       else if (url.pathname === '/auth/callback' && request.method === 'GET') response = await finishLogin(request, env);
+      else if (url.pathname === '/api/logout' && request.method === 'POST') { const session = await requireSession(request, env); verifyCsrf(request, session); response = json({ ok: true }); response.headers.set('Set-Cookie', cookie('editor_session', '', { maxAge: 0, sameSite: 'None', path: '/' })); }
       else if (url.pathname === '/api/session' && request.method === 'GET') response = await sessionInfo(request, env);
       else if (url.pathname === '/api/posts' && request.method === 'GET') response = await listPosts(request, env);
       else if (/^\/api\/posts\/(draft|public)\/[^/]+$/.test(url.pathname) && request.method === 'GET') response = await loadPost(request, env);
       else if (/^\/api\/posts\/(draft|public)\/[^/]+$/.test(url.pathname) && request.method === 'DELETE') response = await deletePost(request, env);
       else if (url.pathname === '/api/posts' && request.method === 'POST') response = await savePost(request, env);
+      else if (url.pathname.startsWith('/api/images/') && request.method === 'GET') response = await readImage(request, env);
       else if (url.pathname === '/api/images' && request.method === 'POST') response = await saveImage(request, env);
       else response = json({ error: 'Not found' }, 404);
       return url.pathname.startsWith('/api/') ? corsResponse(request, env, response) : response;
@@ -182,19 +185,21 @@ async function savePost(request, env) {
   if (new TextEncoder().encode(markdown).byteLength > 1_000_000) throw new HttpError(413, 'Post is too large');
 
   let saved;
+  const warnings = [];
+  const cleanup = async (operation) => { try { await operation(); } catch { warnings.push('본문은 저장됐지만 이전 파일 정리가 끝나지 않았습니다. 목록에서 상태를 확인해 주세요.'); } };
   if (input.status === 'public') {
     await copyPrivateImagesToPublic(markdown, session.token, env);
-    saved = await putFile(session.token, publicRepo(env), `src/content/posts/${input.slug}.md`, markdown, `publish: ${input.title}`);
+    saved = await putFile(session.token, publicRepo(env), `src/content/posts/${input.slug}.md`, markdown, `publish: ${input.title}`, publishedSlug === input.slug ? publishedRecord?.sha ?? null : null);
     if (publishedSlug && publishedSlug !== input.slug && publishedRecord?.sha) {
-      await deleteFile(session.token, publicRepo(env), `src/content/posts/${publishedSlug}.md`, publishedRecord.sha, `rename: ${publishedSlug} -> ${input.slug}`);
+      await cleanup(() => deleteFile(session.token, publicRepo(env), `src/content/posts/${publishedSlug}.md`, publishedRecord.sha, `rename: ${publishedSlug} -> ${input.slug}`));
     }
     if (source?.status === 'draft') {
-      await deleteFile(session.token, privateRepo(env), `draft/${source.slug}.md`, source.sha, `cleanup draft: ${input.title}`);
+      await cleanup(() => deleteFile(session.token, privateRepo(env), `draft/${source.slug}.md`, source.sha, `cleanup draft: ${input.title}`));
     }
   } else {
-    saved = await putFile(session.token, privateRepo(env), `draft/${input.slug}.md`, markdown, `draft: ${input.title}`);
+    saved = await putFile(session.token, privateRepo(env), `draft/${input.slug}.md`, markdown, `draft: ${input.title}`, source?.status === 'draft' && source.slug === input.slug ? source.sha : null);
     if (source?.status === 'draft' && source.slug !== input.slug) {
-      await deleteFile(session.token, privateRepo(env), `draft/${source.slug}.md`, source.sha, `rename draft: ${source.slug} -> ${input.slug}`);
+      await cleanup(() => deleteFile(session.token, privateRepo(env), `draft/${source.slug}.md`, source.sha, `rename draft: ${source.slug} -> ${input.slug}`));
     }
   }
 
@@ -202,6 +207,7 @@ async function savePost(request, env) {
   if (!sha) throw new HttpError(502, 'GitHub did not return the saved file SHA');
   return json({
     ok: true,
+    warnings,
     source: { status: input.status, slug: input.slug, sha },
     publishedSlug: input.status === 'public' ? input.slug : publishedSlug,
   });
@@ -226,6 +232,19 @@ async function deletePost(request, env) {
   return json({ ok: true, status, slug });
 }
 
+async function readImage(request, env) {
+  const session = await requireSession(request, env);
+  const name = decodeURIComponent(new URL(request.url).pathname.slice('/api/images/'.length));
+  if (!/^[a-z0-9._-]+$/.test(name)) throw new HttpError(400, 'Invalid image name');
+  const file = await getFile(session.token, privateRepo(env), `assets/images/${name}`);
+  if (!file?.content) throw new HttpError(404, 'Image not found');
+  const bytes = Uint8Array.from(atob(file.content.replace(/\n/g, '')), c => c.charCodeAt(0));
+  const ext = name.split('.').pop();
+  const mime = {png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',avif:'image/avif'}[ext];
+  if (!mime) throw new HttpError(415, 'Unsupported image preview');
+  return new Response(bytes, {headers:{'Content-Type':mime,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store'}});
+}
+
 async function saveImage(request, env) {
   const session = await requireSession(request, env);
   verifyCsrf(request, session);
@@ -247,7 +266,14 @@ function validatePost(input) {
   if (!input || typeof input !== 'object') throw new HttpError(400, 'Invalid post');
   if (!['draft', 'public'].includes(input.status)) throw new HttpError(400, 'Invalid status');
   validateSlug(input.slug);
-  for (const key of ['title', 'date', 'category', 'summary', 'body']) {
+  if (input.status === 'draft') {
+    input.title = typeof input.title === 'string' && input.title.trim() ? input.title : '제목 없는 기록';
+    input.body = typeof input.body === 'string' ? input.body : '';
+    input.date ||= new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  }
+  input.category = typeof input.category === 'string' && input.category.trim() ? input.category : '미분류';
+  input.summary = typeof input.summary === 'string' ? input.summary : '';
+  for (const key of input.status === 'draft' ? ['title', 'date'] : ['title', 'date', 'body']) {
     if (typeof input[key] !== 'string' || !input[key].trim()) throw new HttpError(400, `${key} is required`);
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date)) throw new HttpError(400, 'Invalid date');
@@ -417,16 +443,16 @@ async function getFile(token, repo, path) {
   return githubRequest(token, `/repos/${repo.owner}/${repo.name}/contents/${encodePath(path)}`);
 }
 
-async function putFile(token, repo, path, value, message) {
-  return putBase64File(token, repo, path, stringToBase64(value), message);
+async function putFile(token, repo, path, value, message, expectedSha) {
+  return putBase64File(token, repo, path, stringToBase64(value), message, expectedSha);
 }
 
-async function putBase64File(token, repo, path, content, message) {
-  const current = await getFile(token, repo, path);
+async function putBase64File(token, repo, path, content, message, expectedSha) {
+  const sha = expectedSha === undefined ? (await getFile(token, repo, path))?.sha : expectedSha;
   return githubRequest(token, `/repos/${repo.owner}/${repo.name}/contents/${encodePath(path)}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, content, ...(current?.sha ? { sha: current.sha } : {}) }),
+    body: JSON.stringify({ message, content, ...(sha ? { sha } : {}) }),
   });
 }
 

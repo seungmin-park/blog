@@ -1,68 +1,57 @@
 ---
+import { getCollection } from 'astro:content';
+const knownTags = [...new Set((await getCollection('posts')).flatMap(post => post.data.tags))];
+import '../../styles/editor.css';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 
 const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
 ---
 
 <BaseLayout
-  title="글쓰기 — 박승민"
-  description="박승민 블로그의 관리자용 마크다운 에디터"
+  title="글쓰기 — 도토리 창고"
+  description="도토리 창고의 관리자용 마크다운 에디터"
   noindex
 >
   <div class="editor-page" data-api-url={editorApi}>
     <header class="editor-topbar">
-      <div>
-        <span class="editor-kicker">WRITING DESK</span>
-        <h1>새 기록</h1>
-      </div>
-      <div class="editor-actions">
-        <span class="save-state" id="save-state" role="status">로컬에 저장됨</span>
-        <button class="button ghost" type="button" id="load-button">GitHub에서 불러오기</button>
-        <button class="button ghost" type="button" id="download-button">Markdown 받기</button>
-        <button class="button danger" type="button" id="delete-button" hidden>삭제</button>
-        <button class="button ghost" type="button" id="draft-button">임시 저장</button>
-        <button class="button primary" type="button" id="publish-button">발행</button>
-      </div>
+      <h1 id="editor-title">새 기록</h1>
+      <div class="editor-actions"><span class="save-state" id="save-state" role="status">이 기기에 저장됨</span><button class="button ghost" type="button" id="draft-button">임시 저장</button><button class="button primary" type="button" id="publish-button">발행</button></div>
     </header>
+    <div class="draft-tools"><div><button class="new-note" type="button" id="new-button">＋ 새 기록</button><select id="local-drafts" aria-label="이 기기의 초안"></select></div><details class="editor-more"><summary>더보기</summary><div><button type="button" id="load-button">서버의 글 불러오기</button><button type="button" id="download-button">Markdown 내려받기</button><button type="button" id="archive-local">기기의 초안 삭제</button><button type="button" id="restore-local" hidden>최근 삭제한 초안 복구</button><button type="button" id="delete-button" hidden>서버의 글 삭제</button></div></details></div>
 
     <div class="connection-note" id="connection-note">
       <span class="status-dot"></span>
-      <span>{editorApi ? 'GitHub 연결 상태를 확인하는 중입니다.' : '로컬 편집 모드 · OAuth API 주소를 설정하면 GitHub 저장이 활성화됩니다.'}</span>
+      <span>{editorApi ? 'GitHub 연결 상태를 확인하는 중입니다.' : '기기에 자동 저장 중 · 서버 저장은 아직 연결되지 않았습니다.'}</span>
       {editorApi && <a id="login-link" href={`${editorApi}/auth/login`}>GitHub 로그인 →</a>}
-    </div>
+    <button type="button" id="logout-button" hidden>로그아웃</button></div>
 
-    <section class="frontmatter-panel" aria-labelledby="meta-title">
-      <div class="panel-heading">
-        <div>
-          <span>01</span>
-          <h2 id="meta-title">글 정보</h2>
-        </div>
-        <button type="button" class="collapse-button" id="meta-toggle" aria-expanded="true" aria-controls="meta-fields">접기</button>
+    <section class="frontmatter-panel" aria-label="글 정보">
+      <div class="field-grid">
+        <label class="wide"><span class="field-label sr-only">제목</span><input id="title" placeholder="제목을 입력하세요" /></label>
+
       </div>
-      <div class="field-grid" id="meta-fields">
-        <label class="wide"><span>제목</span><input id="title" name="title" placeholder="글의 제목" /></label>
-        <label><span>슬러그</span><input id="slug" name="slug" placeholder="post-slug" /><small id="slug-note">글 URL에 사용합니다.</small></label>
-        <label><span>날짜</span><input id="date" name="date" type="date" /></label>
-        <label><span>카테고리</span><input id="category" name="category" placeholder="개발" /></label>
-        <label class="wide"><span>태그</span><input id="tags" name="tags" placeholder="github, astro, 기록" /><small>쉼표로 구분합니다.</small></label>
-        <label class="wide"><span>한 줄 요약</span><input id="summary" name="summary" placeholder="목록과 검색에 표시할 설명" /></label>
-        <label class="wide"><span>썸네일</span><input id="thumbnail" name="thumbnail" placeholder="/assets/images/thumb.png" /></label>
-      </div>
+      <details class="additional-settings"><summary>추가 설정</summary><div class="field-grid" id="meta-fields">
+        <label><span>날짜</span><input id="date" type="date" /></label>
+        <label><span>분류</span><input id="category" placeholder="미분류" /></label>
+        <label class="wide"><span>한 줄 요약</span><input id="summary" placeholder="선택 사항" /></label>
+        <label class="wide"><span>글 주소</span><input id="slug" /><small id="slug-note">자동 생성됩니다.</small></label>
+        <label class="wide"><span>썸네일</span><input id="thumbnail" placeholder="선택 사항" /></label>
+      </div></details>
     </section>
 
     <section class="writing-panel" aria-labelledby="body-title">
       <div class="panel-heading writing-heading">
-        <div><span>02</span><h2 id="body-title">본문</h2></div>
+        <div><h2 id="body-title" class="sr-only">본문</h2></div>
         <div class="view-tabs" role="tablist" aria-label="편집 화면 배치">
-          <button class="active" type="button" data-view="split" aria-selected="true">분할</button>
-          <button type="button" data-view="write" aria-selected="false">작성</button>
+          <button type="button" data-view="split" aria-selected="false">분할</button>
+          <button class="active" type="button" data-view="write" aria-selected="true">작성</button>
           <button type="button" data-view="preview" aria-selected="false">미리보기</button>
         </div>
       </div>
       <div class="toolbar" role="toolbar" aria-label="마크다운 서식">
         <button type="button" data-format="heading" title="제목">H</button>
         <button type="button" data-format="bold" title="굵게 (Ctrl+B)"><strong>B</strong></button>
-        <button type="button" data-format="italic" title="기울임"><em>I</em></button>
+        <button type="button" data-format="italic" title="기울임">I</button>
         <button type="button" data-format="quote" title="인용">❯</button>
         <button type="button" data-format="code" title="코드 블록">&lt;/&gt;</button>
         <button type="button" data-format="list" title="목록">≡</button>
@@ -70,10 +59,10 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         <button type="button" id="image-button" title="이미지">▧</button>
         <input id="image-input" type="file" accept="image/*" hidden />
       </div>
-      <div class="editor-split" id="editor-split" data-view="split">
+      <div class="editor-split" id="editor-split" data-view="write">
         <div class="write-pane">
           <label for="body">Markdown</label>
-          <textarea id="body" spellcheck="true" placeholder="이야기를 시작하세요…"></textarea>
+          <textarea id="body" spellcheck="true" placeholder="Markdown으로 작성하세요."></textarea>
         </div>
         <div class="preview-pane">
           <span>Preview</span>
@@ -82,9 +71,10 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       </div>
       <div class="editor-statusbar">
         <span id="word-count">0자</span>
-        <span>30초마다 자동 저장</span>
+        <span>입력 후 자동 저장 · 서버 보관은 임시 저장</span>
       </div>
     </section>
+    <section class="post-tags" aria-label="글 태그"><div class="field-grid"><label class="wide"><span class="field-label">태그</span><input id="tags" list="known-tags" placeholder="태그 추가" /><datalist id="known-tags">{knownTags.map(tag => <option value={tag} />)}</datalist><div id="tag-chips"></div></label></div></section>
   </div>
 
   <dialog id="message-dialog">
@@ -115,6 +105,11 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
   </dialog>
 
   <script>
+    import { normalizeTags } from '../../lib/note-filters.mjs';
+    import { createStore } from '../../lib/editor-store.mjs';
+    import { assetPath } from '../../lib/markdown-images.mjs';
+    import { micromark } from 'micromark';
+    import { gfm, gfmHtml } from 'micromark-extension-gfm';
     type Draft = {
       title: string; slug: string; date: string;
       category: string; tags: string; summary: string; thumbnail: string; body: string;
@@ -138,68 +133,39 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     const deleteButton = document.querySelector<HTMLButtonElement>('#delete-button');
     const slugNote = document.querySelector<HTMLElement>('#slug-note');
     let csrfToken = '';
+    let busy = false;
     let sourceRef: SourceRef | null = null;
     let publishedSlug: string | null = null;
 
     const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char] ?? char);
-    const safeUrl = (value: string, image = false) => {
-      const decoded = value.replaceAll('&amp;', '&').trim();
-      const allowed = /^(https?:\/\/|\/|#)/i.test(decoded);
-      if (!allowed) return image ? '' : '#';
-      return value;
-    };
-    const inline = (value: string) => value
-      .replace(/`([^`]+)`/g, '<code>$1</code>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, url) => `<img src="${safeUrl(url, true)}" alt="${alt}">`)
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => `<a href="${safeUrl(url)}" target="_blank" rel="noreferrer">${label}</a>`);
-
-    const renderMarkdown = (source: string) => {
-      if (!source.trim()) return '<p class="placeholder">왼쪽에 쓴 내용이 여기에 보입니다.</p>';
-      const escaped = escapeHtml(source);
-      const codeBlocks: string[] = [];
-      const withoutCode = escaped.replace(/```([\w-]*)\n([\s\S]*?)```/g, (_, language, code) => {
-        const token = `@@CODE${codeBlocks.length}@@`;
-        codeBlocks.push(`<pre><code data-language="${language}">${code.trimEnd()}</code></pre>`);
-        return token;
-      });
-      const lines = withoutCode.split('\n');
-      const html: string[] = [];
-      let list: 'ul' | 'ol' | null = null;
-      const closeList = () => { if (list) html.push(`</${list}>`); list = null; };
-      for (const line of lines) {
-        if (/^@@CODE\d+@@$/.test(line)) { closeList(); html.push(line); continue; }
-        const heading = line.match(/^(#{1,3})\s+(.+)/);
-        if (heading) { closeList(); const level = heading[1].length; html.push(`<h${level}>${inline(heading[2])}</h${level}>`); continue; }
-        const quote = line.match(/^&gt;\s?(.+)/);
-        if (quote) { closeList(); html.push(`<blockquote>${inline(quote[1])}</blockquote>`); continue; }
-        const unordered = line.match(/^[-*]\s+(.+)/);
-        if (unordered) { if (list !== 'ul') { closeList(); list = 'ul'; html.push('<ul>'); } html.push(`<li>${inline(unordered[1])}</li>`); continue; }
-        const ordered = line.match(/^\d+\.\s+(.+)/);
-        if (ordered) { if (list !== 'ol') { closeList(); list = 'ol'; html.push('<ol>'); } html.push(`<li>${inline(ordered[1])}</li>`); continue; }
-        closeList();
-        if (line.trim()) html.push(`<p>${inline(line)}</p>`);
-      }
-      closeList();
-      return html.join('\n').replace(/@@CODE(\d+)@@/g, (_, index) => codeBlocks[Number(index)] ?? '');
-    };
-
+    const renderMarkdown = (source: string) => micromark(source, { extensions: [gfm()], htmlExtensions: [gfmHtml()] });
     const getDraft = (): Draft => ({
       title: fields.title.value.trim(), slug: fields.slug.value.trim(), date: fields.date.value,
       category: fields.category.value.trim(),
-      tags: fields.tags.value.trim(), summary: fields.summary.value.trim(),
+      tags: normalizeTags(fields.tags.value).join(', '), summary: fields.summary.value.trim(),
       thumbnail: fields.thumbnail.value.trim(), body: fields.body.value,
     });
 
+    const previewImages = new Map<string,string>();
     const updatePreview = () => {
-      if (preview) preview.innerHTML = renderMarkdown(fields.body.value);
+      if (preview) {
+        preview.innerHTML = renderMarkdown(fields.body.value);
+        preview.querySelectorAll<HTMLImageElement>('img').forEach(image=>{
+          const path=image.getAttribute('src')||'';
+          if(path.startsWith('/assets/')) {
+            image.src=assetPath(path,import.meta.env.BASE_URL);
+            const local=previewImages.get(path);if(local)image.src=local;
+            else if(apiUrl) { image.removeAttribute('src');fetch(`${apiUrl}/api/images/${encodeURIComponent(path.split('/').pop()!)}`,{credentials:'include'}).then(async response=>{if(response.ok){const url=URL.createObjectURL(await response.blob());previewImages.set(path,url);image.src=url;}else image.src=assetPath(path,import.meta.env.BASE_URL);}).catch(()=>{image.alt+=' (이미지를 불러오지 못했습니다)';}); }
+          }
+        });
+      }
       const count = fields.body.value.replace(/\s/g, '').length;
       if (wordCount) wordCount.textContent = `${count.toLocaleString('ko-KR')}자`;
       if (saveState) saveState.textContent = '저장 대기 중…';
     };
 
     const updateRecordControls = () => {
+      document.querySelector('#editor-title')!.textContent=sourceRef?'글 수정':'새 기록';
       if (deleteButton) deleteButton.hidden = !sourceRef;
       if (!slugNote) return;
       const nextSlug = fields.slug.value.trim();
@@ -214,29 +180,57 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         : '저장에 성공한 뒤 기존 초안 파일을 정리합니다.';
     };
 
+    const store = createStore({getItem:(key:string)=>localStorage.getItem(key),setItem:(key:string,value:string)=>localStorage.setItem(key,value)});
+    let localNote: any = null;
+    let dirty = false;
+    let saveTimer: ReturnType<typeof setTimeout>;
+    const today = () => new Intl.DateTimeFormat('en-CA', {timeZone:'Asia/Seoul',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const localSelect = document.querySelector<HTMLSelectElement>('#local-drafts')!;
+    const renderLocalList = () => {
+      document.querySelector<HTMLButtonElement>('#restore-local')!.hidden=store.trash().length===0;
+      localSelect.replaceChildren(...store.list().map((note: any) => { const option=document.createElement('option');option.value=note.id;option.textContent=note.draft?.title || '제목 없는 기록';option.selected=note.id===localNote?.id;return option; }));
+    };
     const saveLocal = () => {
-      const stored: StoredEditor = { draft: getDraft(), source: sourceRef, publishedSlug };
-      localStorage.setItem(storageKey, JSON.stringify(stored));
-      if (saveState) saveState.textContent = `로컬에 저장됨 · ${new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit' }).format(new Date())}`;
+      try {
+        if (!localNote) throw new Error('자동 저장을 시작하지 못했습니다. Markdown 파일로 내려받아 주세요.');
+        const next={...localNote,draft:getDraft(),source:sourceRef,publishedSlug};
+        localNote=store.save(next,localNote.revision);dirty=false;
+        if(saveState)saveState.textContent='이 기기에 저장됨';renderLocalList();return true;
+      } catch(error) { if(saveState)saveState.textContent=error instanceof Error?error.message:'기기 저장 실패 · 파일로 내려받아 주세요';return false; }
     };
-
-    const slugify = (value: string) => value.toLocaleLowerCase('ko')
-      .trim().replace(/[^a-z0-9가-힣]+/g, '-').replace(/^-|-$/g, '');
-
+    const slugify = (value: string) => value.toLocaleLowerCase('ko').trim().replace(/[^a-z0-9가-힣]+/g,'-').replace(/^-|-$/g,'').slice(0,100);
+    const openLocal = (note: any) => {
+      localNote=note;sourceRef=note.source??null;publishedSlug=note.publishedSlug??null;
+      ids.forEach(id=>{fields[id].value=String(note.draft?.[id]??(id==='date'?today():''));});
+      // Keep an existing URL stable when a title changes, including after reload.
+      fields.slug.dataset.edited='true';dirty=false;updatePreview();updateRecordControls();renderLocalList();
+      document.querySelector('#editor-title')!.textContent=sourceRef?'글 수정':'새 기록';
+      renderTagChips();
+    };
+    const newLocal = () => {
+      openLocal(store.create({draft:{date:today(),slug:'note-'+crypto.randomUUID().slice(0,12)},source:null,publishedSlug:null}));
+      fields.title.focus();
+    };
+    document.querySelector('#archive-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;store.archive(localNote.id);newLocal();});
+    document.querySelector('#restore-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;const note=store.trash()[0];if(note)openLocal(store.restore(note.id));});
     const restore = () => {
-      const saved = localStorage.getItem(storageKey);
-      const parsed = saved ? JSON.parse(saved) : null;
-      const stored: StoredEditor = parsed?.draft
-        ? parsed
-        : { draft: parsed ?? {}, source: null, publishedSlug: null };
-      const initial: Partial<Draft> = { date: new Date().toISOString().slice(0, 10), ...stored.draft };
-      sourceRef = stored.source ?? null;
-      publishedSlug = stored.publishedSlug ?? (sourceRef?.status === 'public' ? sourceRef.slug : null);
-      ids.forEach((id) => { if (initial[id] !== undefined) fields[id].value = String(initial[id]); });
-      updatePreview();
-      updateRecordControls();
-      if (saved && saveState) saveState.textContent = '이 기기의 자동 저장본을 불러왔습니다.';
+      try {
+        let note=store.active();
+        if(!note){const old=localStorage.getItem(storageKey);if(old){const value=JSON.parse(old);note=store.create(value.draft?value:{draft:value,source:null});}else {newLocal();return;}}
+        openLocal(note);if(saveState)saveState.textContent='이 기기의 초안을 불러왔습니다';
+      } catch(error){if(saveState)saveState.textContent=error instanceof Error?error.message:'초안 복원 실패';}
     };
+    document.querySelector('#new-button')?.addEventListener('click',()=>{if(busy || !saveLocal())return;newLocal();});
+    localSelect.addEventListener('change',()=>{const id=localSelect.value;if(!saveLocal())return;openLocal(store.select(id));});
+    document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirty)saveLocal();});
+    window.addEventListener('pagehide',()=>{if(dirty)saveLocal();});
+    const renderTagChips = () => {
+      const tags=normalizeTags(fields.tags.value);
+      const root=document.querySelector('#tag-chips')!;root.replaceChildren();
+      tags.forEach(tag=>{const button=document.createElement('button');button.type='button';button.textContent=tag+' ×';button.setAttribute('aria-label',tag+' 태그 제거');button.addEventListener('click',()=>{fields.tags.value=tags.filter(t=>t!==tag).join(', ');fields.tags.dispatchEvent(new Event('input'));});root.append(button);});
+    };
+    fields.tags.addEventListener('keydown',event=>{if((event as KeyboardEvent).key==='Enter'){event.preventDefault();fields.tags.value=normalizeTags(fields.tags.value).join(', ')+', ';fields.tags.dispatchEvent(new Event('input'));}});
+    fields.tags.addEventListener('input',renderTagChips);
 
     const stableCommit = (value: string) => {
       let hash = 0;
@@ -248,7 +242,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       const tags = draft.tags.split(',').map((tag) => tag.trim()).filter(Boolean);
       const yaml = [
         '---', `title: ${JSON.stringify(draft.title)}`, `slug: ${JSON.stringify(draft.slug)}`,
-        `date: ${draft.date}`, `updated: ${new Date().toISOString().slice(0, 10)}`, `status: ${status}`,
+        `date: ${draft.date}`, `updated: ${today()}`, `status: ${status}`,
         `tags: ${JSON.stringify(tags)}`, `category: ${JSON.stringify(draft.category)}`,
         ...(draft.thumbnail ? [`thumbnail: ${JSON.stringify(draft.thumbnail)}`] : []),
         `summary: ${JSON.stringify(draft.summary)}`, 'author: "박승민"',
@@ -281,7 +275,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       const selected = area.value.slice(start, end) || placeholder;
       area.setRangeText(`${before}${selected}${after}`, start, end, 'select');
       area.focus();
-      updatePreview();
+      updatePreview();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveLocal,500);
     };
 
     const formatters: Record<string, () => void> = {
@@ -293,7 +287,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
 
     ids.forEach((id) => fields[id].addEventListener('input', () => {
       if (id === 'title' && !fields.slug.dataset.edited) fields.slug.value = slugify(fields.title.value);
-      updatePreview();
+      updatePreview();dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(saveLocal,500);
     }));
     fields.slug.addEventListener('input', () => { fields.slug.dataset.edited = 'true'; updateRecordControls(); });
     document.querySelectorAll<HTMLButtonElement>('[data-format]').forEach((button) => button.addEventListener('click', () => formatters[button.dataset.format ?? '']?.()));
@@ -308,7 +302,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     const imageInput = document.querySelector<HTMLInputElement>('#image-input');
     document.querySelector('#image-button')?.addEventListener('click', () => imageInput?.click());
     const handleImage = async (file: File) => {
-      if (!file) return;
+      if (!file || busy) return;
       const safeName = file.name.toLocaleLowerCase().replace(/[^a-z0-9._-]+/g, '-');
       if (!apiUrl) {
         wrapSelection(`![${file.name}](/assets/images/${safeName})`, '', '');
@@ -321,6 +315,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         const response = await fetch(`${apiUrl}/api/images`, { method: 'POST', credentials: 'include', headers: { 'X-CSRF-Token': csrfToken }, body: form });
         if (!response.ok) throw new Error('이미지를 업로드하지 못했습니다.');
         const result = await response.json();
+        previewImages.set(result.path,URL.createObjectURL(file));
         wrapSelection(`![${file.name}](${result.path})`, '', '');
       } catch (error) { showMessage('이미지 업로드 실패', error instanceof Error ? error.message : '다시 시도해 주세요.'); }
     };
@@ -360,7 +355,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
 
     document.querySelector('#download-button')?.addEventListener('click', () => {
       const draft = getDraft();
-      if (!draft.title || !draft.slug) { showMessage('글 정보를 확인해 주세요', '제목과 슬러그는 꼭 필요합니다.'); return; }
+      draft.title ||= '제목 없는 기록';
       const blob = new Blob([toMarkdown(draft, 'draft')], { type: 'text/markdown;charset=utf-8' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -370,6 +365,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     });
 
     document.querySelector('#load-button')?.addEventListener('click', async () => {
+      if(busy)return;
       if (!apiUrl) { showMessage('OAuth API 연결이 필요합니다', 'PUBLIC_EDITOR_API_URL을 설정한 뒤 GitHub에 로그인해 주세요.'); return; }
       const list = document.querySelector<HTMLElement>('#remote-post-list');
       if (list) list.innerHTML = '<p class="loading-posts">목록을 불러오는 중…</p>';
@@ -392,7 +388,8 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
               if (!detail.ok) throw new Error('글을 불러오지 못했습니다.');
               const result = await detail.json();
               const loaded = result.post as LoadedPost;
-              ids.forEach((id) => { fields[id].value = String(loaded[id] ?? ''); });
+              if (!saveLocal()) return;
+              openLocal(store.create({draft:loaded,source:result.source,publishedSlug:loaded.publishedSlug || null}));
               sourceRef = result.source as SourceRef;
               publishedSlug = loaded.publishedSlug || (sourceRef.status === 'public' ? sourceRef.slug : null);
               fields.slug.dataset.edited = 'true';
@@ -412,10 +409,15 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
 
     const saveToGitHub = async (status: SaveStatus) => {
       const draft = getDraft();
-      if (!draft.title || !draft.slug || !draft.summary || !draft.body.trim()) { showMessage('아직 비어 있는 항목이 있습니다', '제목, 슬러그, 요약, 본문을 입력해 주세요.'); return; }
+      if (status === 'public' && (!draft.title || !draft.body.trim())) { showMessage('아직 비어 있는 항목이 있습니다', '발행하려면 제목과 본문을 입력해 주세요.'); return; }
+      if (!saveLocal()) return;
+      await checkSession();
+      if (apiUrl && !csrfToken) { showMessage('다시 로그인해 주세요', '현재 원고는 이 기기에 저장했습니다. GitHub 로그인 후 같은 초안을 열어 다시 저장하세요.'); return; }
       if (!apiUrl) { showMessage('로컬 편집 모드입니다', 'Markdown 받기로 파일을 저장하거나 PUBLIC_EDITOR_API_URL을 설정해 GitHub OAuth API를 연결해 주세요.'); return; }
       const button = document.querySelector<HTMLButtonElement>(status === 'public' ? '#publish-button' : '#draft-button');
       const originalLabel = button?.textContent ?? '';
+      if(busy)return;busy=true;localSelect.disabled=true;ids.forEach(id=>fields[id].readOnly=true);
+      document.querySelector<HTMLButtonElement>('#new-button')!.disabled=true;
       if (button) { button.disabled = true; button.textContent = status === 'public' ? '발행 중…' : '저장 중…'; }
       try {
         const response = await fetch(`${apiUrl}/api/posts`, { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }, body: JSON.stringify({ ...draft, status, source: sourceRef }) });
@@ -425,6 +427,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         publishedSlug = result.publishedSlug || null;
         updateRecordControls();
         saveLocal();
+        if (result.warnings?.length) { await showMessage('본문 저장 완료 · 정리 확인 필요', result.warnings.join(' ')); return; }
         if (status === 'public') {
           await showMessage(
             '발행을 요청했습니다',
@@ -439,7 +442,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
           );
         }
       } catch (error) { showMessage('저장하지 못했습니다', error instanceof Error ? error.message : '잠시 후 다시 시도해 주세요.'); }
-      finally { if (button) { button.disabled = false; button.textContent = originalLabel; } }
+      finally {busy=false;localSelect.disabled=false;ids.forEach(id=>fields[id].readOnly=false);document.querySelector<HTMLButtonElement>('#new-button')!.disabled=false;if (button) { button.disabled = false; button.textContent = originalLabel; } }
     };
 
     document.querySelector('#draft-button')?.addEventListener('click', () => saveToGitHub('draft'));
@@ -448,16 +451,17 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
     const resetEditor = () => {
       sourceRef = null;
       publishedSlug = null;
-      ids.forEach((id) => { fields[id].value = id === 'date' ? new Date().toISOString().slice(0, 10) : ''; });
+      ids.forEach((id) => { fields[id].value = id === 'date' ? today() : ''; });
       delete fields.slug.dataset.edited;
-      localStorage.removeItem(storageKey);
+      // Preserve the deleted article as a local recovery copy.
+      newLocal();
       updatePreview();
       updateRecordControls();
       if (saveState) saveState.textContent = '새 글을 작성할 수 있습니다.';
     };
 
     deleteButton?.addEventListener('click', () => {
-      if (!sourceRef) return;
+      if (!sourceRef || busy || !saveLocal()) return;
       const message = document.querySelector<HTMLElement>('#delete-message');
       if (message) message.textContent = sourceRef.status === 'public'
         ? `발행 글 “${sourceRef.slug}”을 현재 사이트에서 내립니다. Git 히스토리와 외부 캐시에는 과거 내용이 남을 수 있으며, 별도 임시 저장본은 삭제하지 않습니다.`
@@ -506,95 +510,15 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
         csrfToken = session.csrf;
         connectionNote.classList.add('connected');
         connectionNote.querySelector('span:nth-child(2)')!.textContent = `${session.login} 계정으로 연결됨`;
-        connectionNote.querySelector('a')?.remove();
-      } catch { connectionNote.querySelector('span:nth-child(2)')!.textContent = 'GitHub 로그인이 필요합니다.'; }
+        const login=connectionNote.querySelector<HTMLAnchorElement>('a');if(login)login.hidden=true;document.querySelector<HTMLButtonElement>('#logout-button')!.hidden=false;
+      } catch { csrfToken='';connectionNote.classList.remove('connected');connectionNote.querySelector('span:nth-child(2)')!.textContent='GitHub 로그인이 필요합니다. 원고는 이 기기에 보관됩니다.';const login=connectionNote.querySelector<HTMLAnchorElement>('a');if(login)login.hidden=false; }
     };
 
+    document.querySelector('#login-link')?.addEventListener('click',event=>{if(!saveLocal())event.preventDefault();});
+    document.querySelector('#logout-button')?.addEventListener('click',async()=>{if(!saveLocal())return;const response=await fetch(`${apiUrl}/api/logout`,{method:'POST',credentials:'include',headers:{'X-CSRF-Token':csrfToken}});if(response.ok){csrfToken='';document.querySelector<HTMLButtonElement>('#logout-button')!.hidden=true;await checkSession();}else showMessage('로그아웃 실패','다시 시도해 주세요.');});
     restore();
     checkSession();
-    window.setInterval(saveLocal, 30_000);
-    window.addEventListener('beforeunload', saveLocal);
+    window.setInterval(()=>{if(dirty)saveLocal();}, 30_000);
+    window.addEventListener('beforeunload',event=>{if(dirty&&!saveLocal()){event.preventDefault();event.returnValue='';}});
   </script>
 </BaseLayout>
-
-<style>
-  :global(body) { background: color-mix(in srgb, var(--bg) 94%, var(--accent) 6%); }
-  :global(.site-header), :global(.site-footer) { display: none; }
-  .editor-page { width: min(100% - 40px, 1240px); margin: 0 auto; padding: 38px 0 64px; }
-  .editor-topbar { display: flex; align-items: flex-end; justify-content: space-between; gap: 28px; margin-bottom: 24px; }
-  .editor-kicker { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.13em; }
-  .editor-topbar h1 { margin: 3px 0 0; font-family: 'Fraunces', Georgia, serif; font-size: 38px; font-weight: 500; }
-  .editor-actions { display: flex; align-items: center; gap: 10px; }
-  .save-state { margin-right: 8px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
-  .button { min-height: 44px; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; }
-  .button:disabled { cursor: wait; opacity: .65; }
-  .button.ghost { background: var(--surface); color: var(--ink-soft); }
-  .button.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-contrast); }
-  .button.danger { border-color: color-mix(in srgb, var(--removed) 55%, var(--line)); background: var(--removed-soft); color: var(--removed); }
-  .connection-note { display: flex; align-items: center; gap: 9px; padding: 11px 14px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); color: var(--ink-soft); font-size: 12.5px; }
-  .connection-note .status-dot { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--warm); }
-  .connection-note.connected .status-dot { background: var(--accent); }
-  .connection-note a { margin-left: auto; color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; }
-  .frontmatter-panel, .writing-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); box-shadow: var(--shadow); }
-  .frontmatter-panel { margin-bottom: 18px; }
-  .panel-heading { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); }
-  .panel-heading > div:first-child { display: flex; align-items: baseline; gap: 10px; }
-  .panel-heading span { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 11px; }
-  .panel-heading h2 { margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: 17px; font-weight: 500; }
-  .collapse-button { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 12px; }
-  .field-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; padding: 20px; }
-  .field-grid[hidden] { display: none; }
-  .field-grid label { display: flex; min-width: 0; flex-direction: column; gap: 7px; }
-  .field-grid label.wide { grid-column: span 2; }
-  .field-grid label > span { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
-  .field-grid input, .field-grid select { width: 100%; min-width: 0; height: 40px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; outline: 0; background: var(--bg); color: var(--ink); font-size: 13px; }
-  .field-grid input:focus, .field-grid select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .field-grid small { color: var(--ink-faint); font-size: 10.5px; }
-  .field-grid small.changed { color: var(--warm); line-height: 1.45; }
-  .writing-heading { min-height: 56px; }
-  .view-tabs { display: flex; padding: 3px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
-  .view-tabs button { min-width: 44px; min-height: 44px; padding: 5px 10px; border: 0; border-radius: 5px; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 11.5px; }
-  .view-tabs button.active { background: var(--surface); color: var(--ink); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-  .toolbar { display: flex; gap: 3px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
-  .toolbar button { display: grid; width: 44px; height: 44px; flex: 0 0 44px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: var(--ink-soft); cursor: pointer; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
-  .toolbar button:hover { background: var(--accent-soft); color: var(--accent); }
-  .editor-split { display: grid; grid-template-columns: 1fr 1fr; min-height: 560px; }
-  .write-pane, .preview-pane { display: flex; min-width: 0; flex-direction: column; }
-  .write-pane { border-right: 1px solid var(--line); }
-  .write-pane.dragging { box-shadow: inset 0 0 0 3px var(--accent); }
-  .write-pane > label, .preview-pane > span { padding: 9px 16px; border-bottom: 1px solid var(--line); color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
-  #body { width: 100%; min-height: 520px; flex: 1; padding: 24px; resize: vertical; border: 0; outline: 0; background: var(--surface); color: var(--ink); font-family: 'IBM Plex Mono', monospace; font-size: 14px; line-height: 1.8; }
-  .markdown-preview { min-height: 520px; padding: 24px 32px; overflow-wrap: anywhere; font-size: 16px; line-height: 1.8; }
-  .markdown-preview :global(h1), .markdown-preview :global(h2), .markdown-preview :global(h3) { margin: 1.6em 0 .55em; font-family: 'Fraunces', Georgia, serif; font-weight: 500; }
-  .markdown-preview :global(h1:first-child), .markdown-preview :global(h2:first-child) { margin-top: 0; }
-  .markdown-preview :global(p) { margin: 0 0 1.2em; }
-  .markdown-preview :global(blockquote) { margin: 1.5em 0; padding-left: 18px; border-left: 2px solid var(--accent); color: var(--ink-soft); font-family: 'Fraunces', Georgia, serif; font-style: italic; }
-  .markdown-preview :global(pre) { padding: 16px; overflow-x: auto; border-radius: 8px; background: #0d1117; color: #e6edf3; font-family: 'IBM Plex Mono', monospace; font-size: 12px; }
-  .markdown-preview :global(code:not(pre code)) { padding: 2px 5px; border-radius: 4px; background: var(--accent-soft); color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: .86em; }
-  .markdown-preview :global(img) { border-radius: 9px; }
-  .markdown-preview :global(a) { color: var(--accent); text-decoration: underline; }
-  .placeholder { color: var(--ink-faint); }
-  .editor-split[data-view='write'] { grid-template-columns: 1fr; } .editor-split[data-view='write'] .preview-pane { display: none; }
-  .editor-split[data-view='preview'] { grid-template-columns: 1fr; } .editor-split[data-view='preview'] .write-pane { display: none; }
-  .editor-statusbar { display: flex; justify-content: space-between; padding: 8px 14px; border-top: 1px solid var(--line); color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; }
-  dialog { width: min(calc(100% - 32px), 420px); max-width: calc(100% - 32px); padding: 0; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); color: var(--ink); box-shadow: 0 24px 80px rgba(0,0,0,.25); }
-  dialog::backdrop { background: rgba(13,17,23,.56); backdrop-filter: blur(3px); }
-  dialog form { padding: 26px; }
-  dialog h2 { margin: 0 0 10px; font-family: 'Fraunces', Georgia, serif; font-size: 22px; font-weight: 500; }
-  dialog p { margin: 0 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
-  .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
-  .load-dialog { width: min(calc(100% - 32px), 560px); max-width: 560px; }
-  .load-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; padding: 22px 24px 16px; border-bottom: 1px solid var(--line); }
-  .load-dialog-head span { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: .1em; }
-  .load-dialog-head h2 { margin: 3px 0 0; }
-  .load-dialog-head button { display: grid; width: 44px; height: 44px; padding: 0; flex: none; place-items: center; border: 0; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: 24px; }
-  .remote-post-list { max-height: min(58vh, 520px); padding: 8px 0; overflow-y: auto; }
-  .remote-post-list > button { display: grid; width: 100%; grid-template-columns: 80px 1fr auto; align-items: center; gap: 12px; padding: 13px 24px; border: 0; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
-  .remote-post-list > button:hover { background: var(--accent-soft); }
-  .remote-post-list strong { overflow: hidden; font-family: 'Fraunces', Georgia, serif; font-size: 15px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-  .remote-status { font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
-  .remote-status.public { color: var(--accent); } .remote-status.draft { color: var(--ink-faint); }
-  .loading-posts { padding: 34px 24px; color: var(--ink-faint); font-family: 'IBM Plex Mono', monospace; font-size: 12px; text-align: center; }
-  @media (max-width: 900px) { .field-grid { grid-template-columns: 1fr 1fr; } .editor-topbar { align-items: flex-start; flex-direction: column; } .editor-actions { width: 100%; flex-wrap: wrap; } .save-state { width: 100%; } }
-  @media (max-width: 700px) { .editor-page { width: min(100% - 24px, 1240px); padding-top: 24px; } .field-grid { grid-template-columns: 1fr; } .field-grid label.wide { grid-column: auto; } .editor-split { grid-template-columns: 1fr; } .editor-split[data-view='split'] .preview-pane { display: none; } .write-pane { border-right: 0; } .connection-note { align-items: flex-start; flex-wrap: wrap; } .connection-note a { display: inline-flex; width: 100%; min-height: 44px; align-items: center; margin: 4px 0 0 16px; } .toolbar { overflow-x: auto; } }
-</style>

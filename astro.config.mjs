@@ -1,4 +1,6 @@
 import { defineConfig } from 'astro/config';
+import { imageBasePlugin } from './src/lib/markdown-images.mjs';
+import { unified } from '@astrojs/markdown-remark';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
@@ -10,6 +12,7 @@ export default defineConfig({
     filter: (page) => !page.includes('/admin/'),
   })],
   markdown: {
+    processor: unified({ smartypants: false, rehypePlugins: [imageBasePlugin(process.env.BASE_PATH || '/')] }),
     shikiConfig: {
       theme: 'github-dark-default',
       wrap: true,
