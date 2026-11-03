@@ -684,3 +684,157 @@ body:has(.editor-page) > main {
   flex-direction: column;
   gap: 8px;
 }
+
+/* Writing flow: title, body, tags, optional metadata, then save/publish. */
+.editor-topbar {
+  margin-bottom: 24px;
+}
+.editor-footer {
+  padding: 24px 0;
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.editor-footer .editor-actions {
+  width: 100%;
+  max-width: none;
+  justify-content: flex-end;
+}
+.editor-footer .save-state {
+  margin-right: auto;
+}
+.editor-page > .additional-settings {
+  padding-top: 0;
+}
+.editor-page > .connection-note {
+  margin: 0;
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 12px;
+}
+.account-button {
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.account-button:hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+@media (max-width: 800px) {
+  .editor-footer .editor-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .editor-footer .save-state {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .editor-page > .connection-note {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+}
+
+.editor-split[data-view="split"] > .write-pane {
+  border-right: 1px solid var(--control, var(--line));
+  padding-right: 24px;
+}
+.editor-split[data-view="split"] > .write-pane > label,
+.editor-split[data-view="split"] > .preview-pane > span {
+  position: static;
+  width: auto;
+  height: auto;
+  clip-path: none;
+  overflow: visible;
+  font-size: 12px;
+  color: var(--ink-soft);
+  padding: 8px 0;
+  text-transform: none;
+}
+.editor-split[data-view="split"] .markdown-preview {
+  padding-top: 16px;
+}
+.post-tags {
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+}
+.post-tags .tag-field {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tag-entry-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 480px;
+}
+.post-tags .tag-entry-row input {
+  height: 44px;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--control, var(--line));
+  background: var(--bg);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+.tag-entry-row button {
+  height: 44px;
+  flex: none;
+  min-width: 64px;
+  padding: 8px 12px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.tag-entry-row button:disabled {
+  color: var(--ink-soft);
+  cursor: default;
+}
+.post-tags #tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.post-tags #tag-chips button {
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 14px;
+}
+.editor-page > .additional-settings {
+  padding: 16px 0;
+}
+.draft-tools .choice-menu {
+  max-width: 280px;
+}
+@media (max-width: 700px) {
+  [data-view="split"].editor-split > .write-pane {
+    border-right: 0;
+    padding-right: 0;
+  }
+  .view-tabs button[data-view="split"] {
+    display: none;
+  }
+  .draft-tools .choice-menu {
+    max-width: 200px;
+  }
+  .draft-tools .choice-menu > summary > span {
+    max-width: 130px;
+  }
+}
+.editor-page {
+  max-width: var(--content-width);
+}

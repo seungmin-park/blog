@@ -92,3 +92,14 @@ export function createStore(storage) {
     },
   };
 }
+export function findLocalCopy(notes, source, draft, fields) {
+  return notes.find(
+    (note) =>
+      note.source?.status === source.status &&
+      note.source?.slug === source.slug &&
+      fields.every(
+        (field) =>
+          String(note.draft?.[field] ?? "") === String(draft[field] ?? ""),
+      ),
+  );
+}
