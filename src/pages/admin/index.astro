@@ -217,7 +217,7 @@ const editorApi = import.meta.env.PUBLIC_EDITOR_API_URL ?? '';
       openLocal(store.create({draft:{date:today(),slug:'note-'+crypto.randomUUID().slice(0,12)},source:null,publishedSlug:null}));
       fields.title.focus();
     };
-    document.querySelector('#archive-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;store.archive(localNote.id);newLocal();});
+    document.querySelector('#archive-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;store.archive(localNote.id);const next=store.list()[0];if(next)openLocal(store.select(next.id));else newLocal();});
     document.querySelector('#restore-local')?.addEventListener('click',()=>{if(busy||!saveLocal())return;const note=store.trash()[0];if(note)openLocal(store.restore(note.id));});
     const restore = () => {
       try {
